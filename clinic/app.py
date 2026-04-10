@@ -465,6 +465,9 @@ def report():
 
 # ─── main ────────────────────────────────────────────────────────────────────
 
+# init_db() is called at import time so WSGI servers (PythonAnywhere, Gunicorn)
+# also initialise the database without needing __main__.
+init_db()
+
 if __name__ == '__main__':
-    init_db()
     app.run(debug=True, host='0.0.0.0', port=5000)
