@@ -1,110 +1,169 @@
 # CLAUDE.md
 
-This file provides guidance to AI assistants (like Claude Code) working with this repository.
+This file provides guidance to AI assistants working with this repository.
 
-## Repository Overview
+---
 
-**Claude-test** is a test/template repository owned by `endyphysio11`. It is currently in a nascent state, containing minimal content and serving as a sandbox for testing Claude AI assistant workflows — in particular, workflows around codebase documentation and AI-driven development.
+## 專案概覽
+
+**鉑適物理治療診所管理系統**（The Platinum Physical Therapy & Wellness Center）
 
 - **Repository:** `endyphysio11/Claude-test`
-- **Remote:** hosted via a local proxy (not a direct GitHub remote)
 - **Default branch:** `main`
-- **Current state:** Minimal — only a `README.md` exists in the tracked file tree
+- **部署平台:** PythonAnywhere（免費 Beginner 方案）
+- **技術棧:** Flask 3.x · SQLite（stdlib sqlite3）· Bootstrap 5.3.2 · FullCalendar 6.1.11
 
-## Repository Structure
+### 更新到 PythonAnywhere 的方法
+```bash
+# 在 PythonAnywhere Bash 執行：
+cd ~/Claude-test && git pull origin main
+# 然後到 Web 頁籤按 Reload
+```
+
+---
+
+## 目錄結構
 
 ```
 Claude-test/
-├── .git/           # Git metadata (not tracked)
-├── README.md       # Project title placeholder
-└── CLAUDE.md       # This file — AI assistant guide
+├── CLAUDE.md
+├── README.md
+└── clinic/
+    ├── app.py                  # Flask 主程式（所有路由）
+    ├── clinic.db               # SQLite 資料庫（PythonAnywhere 上）
+    ├── wsgi.py                 # PythonAnywhere WSGI 入口
+    ├── setup.sh                # 首次部署腳本
+    ├── update.sh               # 更新腳本
+    ├── static/
+    │   ├── style.css           # 全域樣式（品牌設計系統）
+    │   └── script.js           # 共用 JS
+    └── templates/
+        ├── base.html           # 共用版型（含 SVG logo、導覽列）
+        ├── calendar.html       # 預約行事曆（FullCalendar）
+        ├── appointment_form.html  # 新增 / 編輯預約
+        ├── patients.html       # 個案列表
+        ├── patient_form.html   # 新增 / 編輯個案
+        ├── patient_records.html   # 個案病歷列表
+        ├── medical_record.html    # 新增病歷（勾選表單）
+        ├── report.html         # 報表（日 / 週 / 月 / 年）
+        ├── salary.html         # 薪資計算
+        └── therapist_settings.html  # 薪資公式設定
 ```
 
-No source code, dependencies, build system, tests, or CI/CD pipelines exist yet. As the project grows, this file should be updated to reflect the actual structure.
+---
 
-## Git Workflow
+## 資料庫結構
 
-### Branching Convention
+### therapists
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| id | INTEGER PK | |
+| name | TEXT | |
+| base_salary | REAL | 底薪 |
+| commission_type | TEXT | `percent` 或 `per_session` |
+| commission_value | REAL | 抽成比例(%)或每診次金額 |
 
-Feature branches follow this naming pattern:
+**目前治療師：** Endy、Jeffrey、Diana、Rex、Alison
 
-```
-claude/<short-description>-<random-id>
-```
+### patients
+name、phone、birth_date、gender、address、emergency_contact、notes、created_at
 
-Example: `claude/add-claude-documentation-RiRFQ`
+### appointments
+| 欄位 | 說明 |
+|------|------|
+| patient_id / therapist_id | FK |
+| date / start_time / duration | 時間相關 |
+| cost | 費用 |
+| status | `scheduled` / `completed` / `cancelled` |
+| service_type | 見下方服務項目清單 |
+| is_designated | 1=指定治療師 0=非指定 |
+| referral_source | 非指定時的來源渠道 |
+| notes | 備註 |
 
-Always develop on the branch specified for your task. Never push directly to `main` without explicit permission.
+### medical_records
+patient_id、appointment_id、record_date、therapist_id、pain_score、
+14個症狀欄位（symptom_*）、4個疼痛性質（pain_*）、8個病史（history_*）、
+10個治療方式（treatment_*）、assessment、plan、therapist_notes
 
-### Standard Git Operations
+---
 
-**Cloning / switching branches:**
+## 服務項目（SERVICE_TYPES）
+
+| value | 顯示名稱 | 預設費用 |
+|-------|---------|---------|
+| `assessment` | 單純評估衛教 | NT$1,500 |
+| `full_treatment` | 完整治療 | NT$2,500 / 2,800 |
+| `exercise` | 運動訓練 | NT$2,500 / 2,800 |
+| `winback` | 高階儀器 — Winback | NT$1,500 |
+| `shockwave` | 高階儀器 — 震波 | NT$1,500 |
+| `space_rental` | 場租 | NT$300 |
+
+---
+
+## 主要路由
+
+| 路由 | 功能 |
+|------|------|
+| `GET /` | 導向行事曆 |
+| `GET /calendar` | FullCalendar 主畫面 |
+| `GET /appointments/api` | JSON feed（FullCalendar 用） |
+| `POST /appointments/<id>/move` | 拖曳 / 縮放儲存 |
+| `GET/POST /appointments/new` | 新增預約 |
+| `GET/POST /appointments/<id>/edit` | 編輯預約 |
+| `POST /appointments/<id>/complete` | 標記完成 |
+| `POST /appointments/<id>/cancel` | 取消預約 |
+| `GET /patients` | 個案列表（支援搜尋） |
+| `GET/POST /patients/new` | 新增個案 |
+| `GET/POST /patients/<id>/edit` | 編輯個案 |
+| `GET /patients/<id>/records` | 個案病歷列表 |
+| `GET/POST /records/new` | 新增病歷 |
+| `GET /report` | 報表（?period=day/week/month/year&date=YYYY-MM-DD） |
+| `GET /salary` | 薪資計算（?month=YYYY-MM） |
+| `GET/POST /therapists/settings` | 薪資公式設定 |
+
+---
+
+## 設計系統（style.css）
+
+品牌色彩（鉑適物理治療官方品牌色）：
+- `--brand-dark: #1a4f72`（深藍綠，標題、主按鈕）
+- `--gold: #2e7faa`（中藍綠，強調色、連結）
+- `--gold-light: #e8f4f9`（淡藍，背景色塊）
+- `--gold-mid: #6db3ce`（中藍，邊框）
+- `--radius: 14px`、按鈕全部 `border-radius: 50px`（膠囊形）
+
+治療師行事曆顏色：
+- Endy `#4a6fa5` · Jeffrey `#4a9070` · Diana `#b8976c`
+- Rex `#7a5fa0` · Alison `#b85c78`
+
+---
+
+## 待開發功能（已規劃，尚未實作）
+
+- **自動通知 / 追蹤**：預約前提醒、治療後追蹤。需選擇管道（LINE Messaging API 最適合台灣用戶，或 Email）並設定 PythonAnywhere Scheduled Task。
+
+---
+
+## Git 規範
+
 ```bash
-git fetch origin <branch-name>
-git checkout <branch-name>
+# 提交
+git add <specific-files>
+git commit -m "imperative mood message"
+git push origin main
+
+# 不可直接 push 到 main 以外的 branch（除非被指定）
+# 不可 amend 已 push 的 commit
 ```
 
-**Committing changes:**
-```bash
-git add <specific-files>        # Stage specific files — avoid git add -A or git add .
-git commit -m "descriptive message"
-```
+Commit message 使用祈使句：Add / Fix / Update / Remove
 
-**Pushing changes:**
-```bash
-git push -u origin <branch-name>
-```
+---
 
-If a push fails due to a network error, retry up to 4 times with exponential backoff (2s, 4s, 8s, 16s).
+## 開發原則
 
-### Commit Message Style
-
-- Use the imperative mood: "Add", "Fix", "Update", "Remove"
-- Keep the subject line concise (under 72 characters)
-- Focus on the *why*, not just the *what*
-- Do not amend published commits — create new commits instead
-
-## Development Conventions
-
-Since no source code exists yet, the following conventions should be adopted as the repository grows:
-
-### General Principles
-
-- Prefer editing existing files over creating new ones
-- Do not add features, refactoring, or "improvements" beyond what is explicitly requested
-- Do not add speculative abstractions or future-proofing
-- Only add comments where the logic is not self-evident
-- Avoid backwards-compatibility hacks for unused code — delete it cleanly
-
-### Security
-
-- Never introduce command injection, XSS, SQL injection, or other OWASP Top 10 vulnerabilities
-- Only validate input at system boundaries (user input, external APIs)
-- Do not commit secrets, credentials, or `.env` files
-
-### File Creation
-
-- Do not create documentation files (e.g., `*.md`, `README`) unless explicitly asked
-- Do not create helper utilities or abstractions for one-time operations
-
-## Pull Requests
-
-Do not create a pull request unless the user explicitly asks for one. When creating a PR, use the format:
-
-```
-## Summary
-- <bullet points>
-
-## Test plan
-- [ ] <checklist items>
-```
-
-## Updating This File
-
-Whenever the repository gains new structure — source code, dependencies, tests, CI, build scripts — update this `CLAUDE.md` to reflect:
-
-1. Revised directory structure
-2. How to install dependencies
-3. How to build/run the project
-4. How to run tests
-5. Any new conventions or tooling configurations
+- 修改現有檔案優先，非必要不新增檔案
+- 不加超出需求的功能或抽象層
+- 只在邏輯不自明時才加註解
+- 不 commit `.env`、credentials 或 `clinic.db`
+- 系統邊界（使用者輸入）才做驗證，不過度防禦
