@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 import sqlite3
 import os
 from datetime import datetime, date, timedelta
+from collections import defaultdict
 
 app = Flask(__name__)
 app.secret_key = 'clinic-secret-key-2024'
@@ -11,6 +12,14 @@ DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'clinic.db')
 TIME_SLOTS = [f"{h:02d}:{m:02d}" for h in range(10, 20) for m in (0, 30)]
 DURATION_OPTIONS = [30, 45, 60, 90, 120]
 WEEKDAY_ZH = ['一', '二', '三', '四', '五', '六', '日']
+REFERRAL_SOURCES = [
+    ('online_search',      '網路搜尋'),
+    ('social_media',       '社群媒體 (IG/FB)'),
+    ('friend_referral',    '親友介紹'),
+    ('therapist_referral', '治療師介紹'),
+    ('walk_in',            '路過 / 自然到訪'),
+    ('other',              '其他'),
+]
 
 
 def get_db():
@@ -23,8 +32,11 @@ def init_db():
     conn = get_db()
     conn.executescript('''
         CREATE TABLE IF NOT EXISTS therapists (
-            id   INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            name             TEXT NOT NULL,
+            base_salary      REAL    DEFAULT 0,
+            commission_type  TEXT    DEFAULT 'percent',
+            commission_value REAL    DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS patients (
             id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,16 +50,18 @@ def init_db():
             created_at        TEXT DEFAULT (datetime('now','localtime'))
         );
         CREATE TABLE IF NOT EXISTS appointments (
-            id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            patient_id   INTEGER NOT NULL REFERENCES patients(id),
-            therapist_id INTEGER NOT NULL REFERENCES therapists(id),
-            date         TEXT NOT NULL,
-            start_time   TEXT NOT NULL,
-            duration     INTEGER NOT NULL DEFAULT 60,
-            cost         REAL    NOT NULL DEFAULT 0,
-            status       TEXT    NOT NULL DEFAULT 'scheduled',
-            notes        TEXT,
-            created_at   TEXT DEFAULT (datetime('now','localtime'))
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_id      INTEGER NOT NULL REFERENCES patients(id),
+            therapist_id    INTEGER NOT NULL REFERENCES therapists(id),
+            date            TEXT NOT NULL,
+            start_time      TEXT NOT NULL,
+            duration        INTEGER NOT NULL DEFAULT 60,
+            cost            REAL    NOT NULL DEFAULT 0,
+            status          TEXT    NOT NULL DEFAULT 'scheduled',
+            notes           TEXT,
+            is_designated   INTEGER DEFAULT 1,
+            referral_source TEXT,
+            created_at      TEXT DEFAULT (datetime('now','localtime'))
         );
         CREATE TABLE IF NOT EXISTS medical_records (
             id             INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -97,15 +111,34 @@ def init_db():
             treatment_acupuncture INTEGER DEFAULT 0,
             treatment_massage     INTEGER DEFAULT 0,
             -- 文字紀錄
-            assessment     TEXT,
-            plan           TEXT,
+            assessment      TEXT,
+            plan            TEXT,
             therapist_notes TEXT,
-            created_at     TEXT DEFAULT (datetime('now','localtime'))
+            created_at      TEXT DEFAULT (datetime('now','localtime'))
         );
     ''')
     if conn.execute("SELECT COUNT(*) FROM therapists").fetchone()[0] == 0:
         conn.executemany("INSERT INTO therapists (name) VALUES (?)",
                          [('Endy',), ('Jeffrey',), ('Diana',)])
+    conn.commit()
+    conn.close()
+
+
+def migrate_db():
+    """Add new columns to existing databases without losing data."""
+    conn = get_db()
+    migrations = [
+        "ALTER TABLE therapists ADD COLUMN base_salary REAL DEFAULT 0",
+        "ALTER TABLE therapists ADD COLUMN commission_type TEXT DEFAULT 'percent'",
+        "ALTER TABLE therapists ADD COLUMN commission_value REAL DEFAULT 0",
+        "ALTER TABLE appointments ADD COLUMN is_designated INTEGER DEFAULT 1",
+        "ALTER TABLE appointments ADD COLUMN referral_source TEXT",
+    ]
+    for sql in migrations:
+        try:
+            conn.execute(sql)
+        except sqlite3.OperationalError:
+            pass  # column already exists
     conn.commit()
     conn.close()
 
@@ -216,8 +249,8 @@ def appointments_api():
             'borderColor':     border,
             'editable': a['status'] == 'scheduled',
             'extendedProps': {
-                'patient_id':    a['patient_id'],
-                'therapist_id':  a['therapist_id'],
+                'patient_id':     a['patient_id'],
+                'therapist_id':   a['therapist_id'],
                 'therapist_name': a['therapist_name'],
                 'cost':     int(a['cost']),
                 'duration': a['duration'],
@@ -260,13 +293,16 @@ def new_appointment():
 
     if request.method == 'POST':
         f = request.form
+        is_designated   = 1 if f.get('is_designated') == '1' else 0
+        referral_source = f.get('referral_source', '') if not is_designated else ''
         conn.execute("""
             INSERT INTO appointments
-                (patient_id, therapist_id, date, start_time, duration, cost, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                (patient_id, therapist_id, date, start_time, duration, cost, notes,
+                 is_designated, referral_source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (f['patient_id'], f['therapist_id'], f['date'],
               f['start_time'], int(f['duration']), float(f['cost'] or 0),
-              f.get('notes', '')))
+              f.get('notes', ''), is_designated, referral_source))
         conn.commit()
         conn.close()
         flash('預約已新增', 'success')
@@ -279,6 +315,7 @@ def new_appointment():
         appointment=None,
         time_slots=TIME_SLOTS,
         duration_options=DURATION_OPTIONS,
+        referral_sources=REFERRAL_SOURCES,
         default_date=request.args.get('date', date.today().isoformat()),
         default_therapist=request.args.get('therapist_id', ''),
         default_time=request.args.get('start_time', ''),
@@ -294,14 +331,17 @@ def edit_appointment(appt_id):
 
     if request.method == 'POST':
         f = request.form
+        is_designated   = 1 if f.get('is_designated') == '1' else 0
+        referral_source = f.get('referral_source', '') if not is_designated else ''
         conn.execute("""
             UPDATE appointments
             SET patient_id=?, therapist_id=?, date=?, start_time=?,
-                duration=?, cost=?, status=?, notes=?
+                duration=?, cost=?, status=?, notes=?, is_designated=?, referral_source=?
             WHERE id=?
         """, (f['patient_id'], f['therapist_id'], f['date'],
               f['start_time'], int(f['duration']), float(f['cost'] or 0),
-              f.get('status', 'scheduled'), f.get('notes', ''), appt_id))
+              f.get('status', 'scheduled'), f.get('notes', ''),
+              is_designated, referral_source, appt_id))
         conn.commit()
         conn.close()
         flash('預約已更新', 'success')
@@ -314,6 +354,7 @@ def edit_appointment(appt_id):
         appointment=appt,
         time_slots=TIME_SLOTS,
         duration_options=DURATION_OPTIONS,
+        referral_sources=REFERRAL_SOURCES,
         default_date=appt['date'],
         default_therapist=str(appt['therapist_id']),
         default_time=appt['start_time'],
@@ -478,30 +519,70 @@ def patient_records(patient_id):
 
 @app.route('/report')
 def report():
+    period = request.args.get('period', 'day')
+    if period not in ('day', 'week', 'month', 'year'):
+        period = 'day'
     date_str = request.args.get('date', date.today().isoformat())
     try:
-        report_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        anchor = datetime.strptime(date_str, '%Y-%m-%d').date()
     except ValueError:
-        report_date = date.today()
+        anchor = date.today()
+
+    # Compute date range and navigation anchors for each period
+    if period == 'week':
+        week_start   = anchor - timedelta(days=anchor.weekday())
+        week_end     = week_start + timedelta(days=4)
+        date_from    = week_start
+        date_to      = week_end
+        prev_anchor  = (week_start - timedelta(days=7)).isoformat()
+        next_anchor  = (week_start + timedelta(days=7)).isoformat()
+        period_label = (f"{week_start.year}年 "
+                        f"{week_start.month}月{week_start.day}日"
+                        f" – {week_end.month}月{week_end.day}日")
+    elif period == 'month':
+        month_start = anchor.replace(day=1)
+        if month_start.month == 12:
+            month_end = month_start.replace(year=month_start.year + 1, month=1, day=1) - timedelta(days=1)
+        else:
+            month_end = month_start.replace(month=month_start.month + 1, day=1) - timedelta(days=1)
+        date_from    = month_start
+        date_to      = month_end
+        prev_anchor  = (month_start - timedelta(days=1)).replace(day=1).isoformat()
+        next_anchor  = (month_end + timedelta(days=1)).isoformat()
+        period_label = f"{anchor.year}年{anchor.month}月"
+    elif period == 'year':
+        date_from    = anchor.replace(month=1, day=1)
+        date_to      = anchor.replace(month=12, day=31)
+        prev_anchor  = anchor.replace(year=anchor.year - 1).isoformat()
+        next_anchor  = anchor.replace(year=anchor.year + 1).isoformat()
+        period_label = f"{anchor.year}年"
+    else:  # day
+        period       = 'day'
+        date_from    = anchor
+        date_to      = anchor
+        prev_anchor  = prev_workday(anchor).isoformat()
+        next_anchor  = next_workday(anchor).isoformat()
+        period_label = (f"{anchor.year}年{anchor.month}月{anchor.day}日"
+                        f"（週{WEEKDAY_ZH[anchor.weekday()]}）")
 
     conn = get_db()
     therapists = conn.execute("SELECT * FROM therapists ORDER BY id").fetchall()
-    appointments = conn.execute("""
+    rows = conn.execute("""
         SELECT a.*, p.name AS patient_name, t.name AS therapist_name
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
         JOIN therapists t ON a.therapist_id = t.id
-        WHERE a.date = ?
-        ORDER BY a.therapist_id, a.start_time
-    """, (report_date.isoformat(),)).fetchall()
+        WHERE a.date >= ? AND a.date <= ?
+        ORDER BY a.date, a.therapist_id, a.start_time
+    """, (date_from.isoformat(), date_to.isoformat())).fetchall()
     conn.close()
 
-    active = [a for a in appointments if a['status'] != 'cancelled']
-    revenue = sum(a['cost'] for a in appointments if a['status'] == 'completed')
+    active  = [a for a in rows if a['status'] != 'cancelled']
+    revenue = sum(a['cost'] for a in rows if a['status'] == 'completed')
 
     t_stats = {}
     for t in therapists:
-        ta = [a for a in appointments if a['therapist_id'] == t['id']]
+        ta = [a for a in rows if a['therapist_id'] == t['id']]
         t_stats[t['id']] = {
             'name':         t['name'],
             'count':        len([a for a in ta if a['status'] != 'cancelled']),
@@ -510,22 +591,154 @@ def report():
             'appointments': ta,
         }
 
+    # Daily breakdown (week / month views)
+    daily_breakdown = []
+    if period in ('week', 'month'):
+        by_date = defaultdict(list)
+        for a in rows:
+            by_date[a['date']].append(a)
+        d = date_from
+        while d <= date_to:
+            if d.weekday() < 5:
+                da = by_date[d.isoformat()]
+                daily_breakdown.append({
+                    'date':      d.isoformat(),
+                    'weekday':   WEEKDAY_ZH[d.weekday()],
+                    'count':     len([a for a in da if a['status'] != 'cancelled']),
+                    'completed': len([a for a in da if a['status'] == 'completed']),
+                    'revenue':   sum(a['cost'] for a in da if a['status'] == 'completed'),
+                })
+            d += timedelta(days=1)
+
+    # Monthly breakdown (year view)
+    monthly_breakdown = []
+    if period == 'year':
+        by_month = defaultdict(list)
+        for a in rows:
+            by_month[a['date'][:7]].append(a)
+        for m in range(1, 13):
+            key = f"{anchor.year}-{m:02d}"
+            ma  = by_month[key]
+            monthly_breakdown.append({
+                'key':       key,
+                'label':     f"{m}月",
+                'count':     len([a for a in ma if a['status'] != 'cancelled']),
+                'completed': len([a for a in ma if a['status'] == 'completed']),
+                'revenue':   sum(a['cost'] for a in ma if a['status'] == 'completed'),
+            })
+
     return render_template('report.html',
-        report_date=report_date,
-        weekday=WEEKDAY_ZH[report_date.weekday()],
+        period=period,
+        period_label=period_label,
+        anchor=anchor,
+        date_from=date_from,
+        date_to=date_to,
+        prev_anchor=prev_anchor,
+        next_anchor=next_anchor,
         therapists=therapists,
-        appointments=appointments,
+        appointments=rows,
         t_stats=t_stats,
         total=len(active),
         revenue=revenue,
+        report_date=anchor,
+        weekday=WEEKDAY_ZH[anchor.weekday()],
+        daily_breakdown=daily_breakdown,
+        monthly_breakdown=monthly_breakdown,
     )
+
+
+# ─── salary ──────────────────────────────────────────────────────────────────
+
+@app.route('/salary')
+def salary():
+    month_str = request.args.get('month', date.today().strftime('%Y-%m'))
+    try:
+        month_start = datetime.strptime(month_str + '-01', '%Y-%m-%d').date()
+    except ValueError:
+        month_start = date.today().replace(day=1)
+
+    if month_start.month == 12:
+        month_end = month_start.replace(year=month_start.year + 1, month=1, day=1) - timedelta(days=1)
+    else:
+        month_end = month_start.replace(month=month_start.month + 1, day=1) - timedelta(days=1)
+
+    prev_month = (month_start - timedelta(days=1)).strftime('%Y-%m')
+    next_month = (month_end  + timedelta(days=1)).strftime('%Y-%m')
+
+    conn = get_db()
+    therapists = conn.execute("SELECT * FROM therapists ORDER BY id").fetchall()
+
+    salary_data = []
+    for t in therapists:
+        completed = conn.execute("""
+            SELECT * FROM appointments
+            WHERE therapist_id = ? AND date >= ? AND date <= ? AND status = 'completed'
+        """, (t['id'], month_start.isoformat(), month_end.isoformat())).fetchall()
+
+        total_revenue = sum(r['cost'] for r in completed)
+        session_count = len(completed)
+        base    = t['base_salary']      or 0
+        c_type  = t['commission_type']  or 'percent'
+        c_value = t['commission_value'] or 0
+
+        if c_type == 'percent':
+            commission = total_revenue * c_value / 100
+        else:  # per_session
+            commission = session_count * c_value
+
+        salary_data.append({
+            'id':               t['id'],
+            'name':             t['name'],
+            'base_salary':      base,
+            'commission_type':  c_type,
+            'commission_value': c_value,
+            'session_count':    session_count,
+            'revenue':          total_revenue,
+            'commission':       commission,
+            'total_salary':     base + commission,
+        })
+
+    conn.close()
+    return render_template('salary.html',
+        month_str=month_str,
+        month_start=month_start,
+        salary_data=salary_data,
+        prev_month=prev_month,
+        next_month=next_month,
+    )
+
+
+@app.route('/therapists/settings', methods=['GET', 'POST'])
+def therapist_settings():
+    conn = get_db()
+    therapists = conn.execute("SELECT * FROM therapists ORDER BY id").fetchall()
+
+    if request.method == 'POST':
+        for t in therapists:
+            tid     = t['id']
+            base    = float(request.form.get(f'base_{tid}',   0) or 0)
+            c_type  = request.form.get(f'ctype_{tid}',  'percent')
+            c_value = float(request.form.get(f'cvalue_{tid}', 0) or 0)
+            conn.execute("""
+                UPDATE therapists
+                SET base_salary=?, commission_type=?, commission_value=?
+                WHERE id=?
+            """, (base, c_type, c_value, tid))
+        conn.commit()
+        conn.close()
+        flash('薪資設定已更新', 'success')
+        return redirect(url_for('therapist_settings'))
+
+    conn.close()
+    return render_template('therapist_settings.html', therapists=therapists)
 
 
 # ─── main ────────────────────────────────────────────────────────────────────
 
-# init_db() is called at import time so WSGI servers (PythonAnywhere, Gunicorn)
-# also initialise the database without needing __main__.
+# init_db() and migrate_db() are called at import time so WSGI servers
+# (PythonAnywhere, Gunicorn) initialise the database without needing __main__.
 init_db()
+migrate_db()
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

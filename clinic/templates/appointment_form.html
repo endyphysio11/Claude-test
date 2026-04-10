@@ -109,6 +109,37 @@
           </div>
           {% endif %}
 
+          <!-- 個案來源 -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">個案來源</label>
+            <div class="d-flex gap-4 mb-2">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="is_designated" id="src_designated"
+                       value="1" onchange="toggleReferral()"
+                       {% if not appointment or appointment.is_designated == 1 or appointment.get('is_designated') is none %}checked{% endif %}>
+                <label class="form-check-label" for="src_designated">指定治療師</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="is_designated" id="src_not_designated"
+                       value="0" onchange="toggleReferral()"
+                       {% if appointment and appointment.is_designated == 0 %}checked{% endif %}>
+                <label class="form-check-label" for="src_not_designated">非指定治療師</label>
+              </div>
+            </div>
+            <div id="referral_row"
+                 {% if not appointment or appointment.is_designated != 0 %}style="display:none"{% endif %}>
+              <select name="referral_source" class="form-select" style="max-width:280px">
+                <option value="">— 請選擇來源渠道 —</option>
+                {% for val, label in referral_sources %}
+                <option value="{{ val }}"
+                  {% if appointment and appointment.referral_source == val %}selected{% endif %}>
+                  {{ label }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
           <!-- 備註 -->
           <div class="mb-4">
             <label class="form-label fw-semibold">備註</label>
@@ -132,5 +163,12 @@
 
   </div>
 </div>
+
+<script>
+function toggleReferral() {
+  const notDesignated = document.getElementById('src_not_designated').checked;
+  document.getElementById('referral_row').style.display = notDesignated ? '' : 'none';
+}
+</script>
 
 {% endblock %}

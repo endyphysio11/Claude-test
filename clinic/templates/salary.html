@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <p class="text-uppercase mb-0" style="font-size:0.68rem;letter-spacing:0.12em;color:var(--gold)">SALARY</p>
+    <h5 class="page-title mb-0">薪資計算</h5>
+  </div>
+  <a href="/therapists/settings" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-sliders me-1"></i>薪資設定
+  </a>
+</div>
+
+<!-- Month navigation -->
+<div class="d-flex align-items-center justify-content-between px-1 py-2 mb-4"
+     style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius)">
+  <a href="/salary?month={{ prev_month }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-chevron-left"></i>
+  </a>
+  <span style="font-size:0.95rem;font-weight:600;color:var(--dark)">
+    {{ month_start.year }}年{{ month_start.month }}月
+  </span>
+  <a href="/salary?month={{ next_month }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-chevron-right"></i>
+  </a>
+</div>
+
+<!-- Therapist salary cards -->
+<div class="row g-4 mb-4">
+  {% for s in salary_data %}
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-header gold-header">
+        <div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;opacity:0.7">THERAPIST</div>
+        <h6 class="mb-0 fw-bold mt-1">{{ s.name }}</h6>
+      </div>
+      <div class="card-body">
+
+        <div class="d-flex justify-content-between mb-2 pb-2" style="border-bottom:1px solid var(--border)">
+          <span class="text-muted small">完成診次</span>
+          <span class="fw-semibold">{{ s.session_count }} 次</span>
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+          <span class="text-muted small">治療收入</span>
+          <span class="fw-semibold">NT$ {{ s.revenue | int }}</span>
+        </div>
+
+        <div class="d-flex justify-content-between mb-2 pb-2" style="border-bottom:1px solid var(--border)">
+          <span class="text-muted small">底薪</span>
+          <span class="fw-semibold">NT$ {{ s.base_salary | int }}</span>
+        </div>
+
+        {% if s.commission_type == 'percent' %}
+        <div class="d-flex justify-content-between mb-2">
+          <span class="text-muted small">抽成（{{ s.commission_value | int }}%）</span>
+          <span class="fw-semibold">NT$ {{ s.commission | int }}</span>
+        </div>
+        {% else %}
+        <div class="d-flex justify-content-between mb-2">
+          <span class="text-muted small">診次獎金（NT$ {{ s.commission_value | int }}/次）</span>
+          <span class="fw-semibold">NT$ {{ s.commission | int }}</span>
+        </div>
+        {% endif %}
+
+        <div class="d-flex justify-content-between mt-3 pt-2"
+             style="border-top:2px solid var(--gold);background:var(--gold-light);margin:0 -1rem -1rem;padding:0.75rem 1rem;border-radius:0 0 var(--radius) var(--radius)">
+          <span class="fw-bold" style="color:var(--dark)">應發薪資</span>
+          <span class="fw-bold fs-5" style="color:var(--gold)">NT$ {{ s.total_salary | int }}</span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12 text-center text-muted py-5">尚未設定治療師</div>
+  {% endfor %}
+</div>
+
+<!-- Summary table -->
+{% if salary_data %}
+<div class="card shadow-sm">
+  <div class="card-header fw-semibold">
+    <i class="bi bi-table me-1"></i>薪資彙總表 — {{ month_start.year }}年{{ month_start.month }}月
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>治療師</th>
+          <th class="text-center">診次</th>
+          <th class="text-end">治療收入</th>
+          <th class="text-end">底薪</th>
+          <th class="text-end">抽成/獎金</th>
+          <th class="text-end fw-bold">應發薪資</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in salary_data %}
+        <tr>
+          <td class="fw-semibold">{{ s.name }}</td>
+          <td class="text-center">{{ s.session_count }}</td>
+          <td class="text-end">{{ s.revenue | int }}</td>
+          <td class="text-end">{{ s.base_salary | int }}</td>
+          <td class="text-end">{{ s.commission | int }}</td>
+          <td class="text-end fw-bold" style="color:var(--gold)">NT$ {{ s.total_salary | int }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="table-light fw-bold">
+        <tr>
+          <td>合計</td>
+          <td class="text-center">{{ salary_data | sum(attribute='session_count') }}</td>
+          <td class="text-end">{{ salary_data | sum(attribute='revenue') | int }}</td>
+          <td class="text-end">{{ salary_data | sum(attribute='base_salary') | int }}</td>
+          <td class="text-end">{{ salary_data | sum(attribute='commission') | int }}</td>
+          <td class="text-end" style="color:var(--gold)">
+            NT$ {{ salary_data | sum(attribute='total_salary') | int }}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
