@@ -7,7 +7,7 @@
 <!-- Therapist legend + new appointment button -->
 <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
   <div class="d-flex gap-3 align-items-center flex-wrap">
-    {% set colors = {'Endy':'#4a6fa5','Jeffrey':'#4a9070','Diana':'#b8976c'} %}
+    {% set colors = {'Endy':'#4a6fa5','Jeffrey':'#4a9070','Diana':'#b8976c','Rex':'#7a5fa0','Alison':'#b85c78'} %}
     {% for t in therapists %}
     <div class="d-flex align-items-center gap-2">
       <span style="width:10px;height:10px;border-radius:2px;background:{{ colors.get(t.name,'#6b7280') }};display:inline-block;flex-shrink:0"></span>
@@ -44,6 +44,10 @@
           <div class="d-flex justify-content-between">
             <span style="font-size:0.78rem;color:var(--text-muted)">時間</span>
             <span id="modal-time" style="font-size:0.85rem"></span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span style="font-size:0.78rem;color:var(--text-muted)">服務項目</span>
+            <span id="modal-service" style="font-size:0.85rem;text-align:right"></span>
           </div>
           <div class="d-flex justify-content-between">
             <span style="font-size:0.78rem;color:var(--text-muted)">時長</span>
@@ -88,6 +92,23 @@
 </div>
 
 <script>
+const SVC_NAMES = {
+  assessment:    '單純評估衛教',
+  full_treatment:'完整治療',
+  exercise:      '運動訓練',
+  winback:       '高階儀器 — Winback',
+  shockwave:     '高階儀器 — 震波',
+  space_rental:  '場租',
+};
+const SVC_SHORT = {
+  assessment:    '評估',
+  full_treatment:'治療',
+  exercise:      '運動',
+  winback:       'Winback',
+  shockwave:     '震波',
+  space_rental:  '場租',
+};
+
 document.addEventListener('DOMContentLoaded', function () {
 
   const calendarEl = document.getElementById('calendar');
@@ -149,6 +170,7 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('modal-title').textContent     = ev.title;
       document.getElementById('modal-therapist').textContent = p.therapist_name;
       document.getElementById('modal-time').textContent      = `${dateStr}　${fmt(ev.start)} – ${fmt(ev.end)}`;
+      document.getElementById('modal-service').textContent   = SVC_NAMES[p.service_type] || '—';
       document.getElementById('modal-duration').textContent  = `${p.duration} 分鐘`;
       document.getElementById('modal-cost').textContent      = `NT$ ${p.cost.toLocaleString()}`;
 
@@ -216,11 +238,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ── Custom event display ───────────────────────────
     eventContent: function (arg) {
-      const p = arg.event.extendedProps;
+      const p   = arg.event.extendedProps;
+      const svc = SVC_SHORT[p.service_type] || '';
       return {
         html: `<div class="fc-event-inner">
           <div class="fc-event-patient">${arg.event.title}</div>
-          <div class="fc-event-meta">${p.therapist_name}&ensp;·&ensp;NT$${p.cost.toLocaleString()}</div>
+          <div class="fc-event-meta">${p.therapist_name}&ensp;·&ensp;${svc}&ensp;·&ensp;NT$${p.cost.toLocaleString()}</div>
         </div>`
       };
     },

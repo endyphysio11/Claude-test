@@ -21,6 +21,16 @@ REFERRAL_SOURCES = [
     ('other',              '其他'),
 ]
 
+# (value, display_label, [price_presets])
+SERVICE_TYPES = [
+    ('assessment',    '單純評估衛教',        [1500]),
+    ('full_treatment','完整治療',            [2500, 2800]),
+    ('exercise',      '運動訓練',            [2500, 2800]),
+    ('winback',       '高階儀器 — Winback',  [1500]),
+    ('shockwave',     '高階儀器 — 震波',     [1500]),
+    ('space_rental',  '場租',               [300]),
+]
+
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -133,12 +143,21 @@ def migrate_db():
         "ALTER TABLE therapists ADD COLUMN commission_value REAL DEFAULT 0",
         "ALTER TABLE appointments ADD COLUMN is_designated INTEGER DEFAULT 1",
         "ALTER TABLE appointments ADD COLUMN referral_source TEXT",
+        "ALTER TABLE appointments ADD COLUMN service_type TEXT DEFAULT 'full_treatment'",
     ]
     for sql in migrations:
         try:
             conn.execute(sql)
         except sqlite3.OperationalError:
             pass  # column already exists
+
+    # Add new therapists if not present
+    for name in ('Rex', 'Alison'):
+        if not conn.execute(
+            "SELECT id FROM therapists WHERE name = ?", (name,)
+        ).fetchone():
+            conn.execute("INSERT INTO therapists (name) VALUES (?)", (name,))
+
     conn.commit()
     conn.close()
 
@@ -207,6 +226,8 @@ def appointments_api():
         'Endy':    ('#4a6fa5', '#3a5a8f'),
         'Jeffrey': ('#4a9070', '#3a7a5a'),
         'Diana':   ('#b8976c', '#a2845c'),
+        'Rex':     ('#7a5fa0', '#6a4f8a'),
+        'Alison':  ('#b85c78', '#9a4c65'),
     }
     DEFAULT_COLOR = ('#6b7280', '#4b5563')
 
@@ -252,10 +273,11 @@ def appointments_api():
                 'patient_id':     a['patient_id'],
                 'therapist_id':   a['therapist_id'],
                 'therapist_name': a['therapist_name'],
-                'cost':     int(a['cost']),
-                'duration': a['duration'],
-                'notes':    a['notes'] or '',
-                'status':   a['status'],
+                'cost':         int(a['cost']),
+                'duration':     a['duration'],
+                'notes':        a['notes'] or '',
+                'status':       a['status'],
+                'service_type': a['service_type'] or 'full_treatment',
             },
         })
     return jsonify(events)
@@ -298,11 +320,12 @@ def new_appointment():
         conn.execute("""
             INSERT INTO appointments
                 (patient_id, therapist_id, date, start_time, duration, cost, notes,
-                 is_designated, referral_source)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 is_designated, referral_source, service_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (f['patient_id'], f['therapist_id'], f['date'],
               f['start_time'], int(f['duration']), float(f['cost'] or 0),
-              f.get('notes', ''), is_designated, referral_source))
+              f.get('notes', ''), is_designated, referral_source,
+              f.get('service_type', 'full_treatment')))
         conn.commit()
         conn.close()
         flash('預約已新增', 'success')
@@ -316,6 +339,7 @@ def new_appointment():
         time_slots=TIME_SLOTS,
         duration_options=DURATION_OPTIONS,
         referral_sources=REFERRAL_SOURCES,
+        service_types=SERVICE_TYPES,
         default_date=request.args.get('date', date.today().isoformat()),
         default_therapist=request.args.get('therapist_id', ''),
         default_time=request.args.get('start_time', ''),
@@ -336,12 +360,14 @@ def edit_appointment(appt_id):
         conn.execute("""
             UPDATE appointments
             SET patient_id=?, therapist_id=?, date=?, start_time=?,
-                duration=?, cost=?, status=?, notes=?, is_designated=?, referral_source=?
+                duration=?, cost=?, status=?, notes=?,
+                is_designated=?, referral_source=?, service_type=?
             WHERE id=?
         """, (f['patient_id'], f['therapist_id'], f['date'],
               f['start_time'], int(f['duration']), float(f['cost'] or 0),
               f.get('status', 'scheduled'), f.get('notes', ''),
-              is_designated, referral_source, appt_id))
+              is_designated, referral_source,
+              f.get('service_type', 'full_treatment'), appt_id))
         conn.commit()
         conn.close()
         flash('預約已更新', 'success')
@@ -355,6 +381,7 @@ def edit_appointment(appt_id):
         time_slots=TIME_SLOTS,
         duration_options=DURATION_OPTIONS,
         referral_sources=REFERRAL_SOURCES,
+        service_types=SERVICE_TYPES,
         default_date=appt['date'],
         default_therapist=str(appt['therapist_id']),
         default_time=appt['start_time'],

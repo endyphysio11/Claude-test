@@ -7,7 +7,7 @@
     <div class="card shadow-sm">
       <div class="card-header gold-header">
         <p class="text-uppercase mb-0" style="font-size:0.65rem;letter-spacing:0.12em;color:var(--gold)">APPOINTMENT</p>
-        <h6 class="mb-0 fw-600">{{ '編輯預約' if appointment else '新增預約' }}</h6>
+        <h6 class="mb-0 fw-semibold">{{ '編輯預約' if appointment else '新增預約' }}</h6>
       </div>
       <div class="card-body">
 
@@ -26,8 +26,7 @@
               {% endfor %}
             </select>
             <div class="form-text">
-              找不到個案？
-              <a href="/patients/new" target="_blank">新增個案</a>
+              找不到個案？<a href="/patients/new" target="_blank">新增個案</a>
             </div>
           </div>
 
@@ -67,9 +66,34 @@
             </div>
           </div>
 
+          <!-- 服務項目 -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">服務項目 <span class="text-danger">*</span></label>
+            <div class="row g-2">
+              {% for val, label, prices in service_types %}
+              <div class="col-6 col-sm-4">
+                <label class="d-block" style="cursor:pointer">
+                  <input type="radio" name="service_type" value="{{ val }}" class="visually-hidden svc-radio"
+                         onchange="applyServicePreset('{{ val }}')"
+                         {% if (appointment and appointment.service_type == val) or
+                               (not appointment and val == 'full_treatment') %}checked{% endif %}>
+                  <div class="svc-card text-center p-2 {% if (appointment and appointment.service_type == val) or (not appointment and val == 'full_treatment') %}selected{% endif %}"
+                       style="border:1.5px solid var(--border);border-radius:10px;font-size:0.8rem;transition:all 0.15s">
+                    <div class="fw-semibold" style="color:var(--brand-dark);font-size:0.82rem">{{ label }}</div>
+                    <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px">
+                      {% if prices | length == 1 %}NT$ {{ prices[0] }}
+                      {% else %}NT$ {{ prices[0] }} / {{ prices[1] }}{% endif %}
+                    </div>
+                  </div>
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+
           <!-- 時長 + 費用 -->
           <div class="row g-3 mb-3">
-            <div class="col-sm-6">
+            <div class="col-sm-5">
               <label class="form-label fw-semibold">治療時長</label>
               <select name="duration" class="form-select">
                 {% for d in duration_options %}
@@ -81,19 +105,12 @@
                 {% endfor %}
               </select>
             </div>
-            <div class="col-sm-6">
+            <div class="col-sm-7">
               <label class="form-label fw-semibold">費用 (NT$)</label>
               <input type="number" name="cost" id="cost" class="form-control" min="0" step="50"
                      value="{{ appointment.cost | int if appointment else '' }}"
-                     placeholder="0">
-              <div class="d-flex gap-2 mt-2 flex-wrap">
-                {% for amt in [2500, 2800] %}
-                <button type="button" class="btn btn-sm btn-outline-secondary px-3"
-                        onclick="document.getElementById('cost').value='{{ amt }}'">
-                  NT$ {{ amt }}
-                </button>
-                {% endfor %}
-              </div>
+                     placeholder="選擇服務項目後自動帶入">
+              <div class="d-flex gap-2 mt-2 flex-wrap" id="cost-presets"></div>
             </div>
           </div>
 
@@ -102,9 +119,9 @@
           <div class="mb-3">
             <label class="form-label fw-semibold">狀態</label>
             <select name="status" class="form-select">
-              <option value="scheduled"  {% if appointment.status == 'scheduled'  %}selected{% endif %}>已預約</option>
-              <option value="completed"  {% if appointment.status == 'completed'  %}selected{% endif %}>已完成</option>
-              <option value="cancelled"  {% if appointment.status == 'cancelled'  %}selected{% endif %}>已取消</option>
+              <option value="scheduled" {% if appointment.status == 'scheduled' %}selected{% endif %}>已預約</option>
+              <option value="completed" {% if appointment.status == 'completed' %}selected{% endif %}>已完成</option>
+              <option value="cancelled" {% if appointment.status == 'cancelled' %}selected{% endif %}>已取消</option>
             </select>
           </div>
           {% endif %}
@@ -116,7 +133,7 @@
               <div class="form-check">
                 <input class="form-check-input" type="radio" name="is_designated" id="src_designated"
                        value="1" onchange="toggleReferral()"
-                       {% if not appointment or appointment.is_designated == 1 or appointment.get('is_designated') is none %}checked{% endif %}>
+                       {% if not appointment or appointment.is_designated != 0 %}checked{% endif %}>
                 <label class="form-check-label" for="src_designated">指定治療師</label>
               </div>
               <div class="form-check">
@@ -152,8 +169,7 @@
               <i class="bi bi-x-lg me-1"></i>取消
             </a>
             <button type="submit" class="btn btn-primary">
-              <i class="bi bi-check-lg me-1"></i>
-              {{ '更新' if appointment else '新增' }}
+              <i class="bi bi-check-lg me-1"></i>{{ '更新' if appointment else '新增' }}
             </button>
           </div>
 
@@ -164,11 +180,58 @@
   </div>
 </div>
 
+<style>
+.svc-card:hover { border-color: var(--gold) !important; background: var(--gold-light); }
+.svc-card.selected { border-color: var(--brand-dark) !important; background: var(--gold-light); }
+</style>
+
 <script>
+const SERVICE_PRESETS = {
+  {% for val, label, prices in service_types %}
+  '{{ val }}': {{ prices | tojson }},
+  {% endfor %}
+};
+
+function applyServicePreset(val) {
+  const prices    = SERVICE_PRESETS[val] || [];
+  const costInput = document.getElementById('cost');
+  const presetsDiv = document.getElementById('cost-presets');
+
+  // Highlight selected card
+  document.querySelectorAll('.svc-card').forEach(c => c.classList.remove('selected'));
+  const radio = document.querySelector(`.svc-radio[value="${val}"]`);
+  if (radio) radio.closest('label').querySelector('.svc-card').classList.add('selected');
+
+  // Auto-fill cost
+  if (prices.length >= 1) costInput.value = prices[0];
+
+  // Render quick-fill buttons (only for multi-price options)
+  if (prices.length > 1) {
+    presetsDiv.innerHTML = prices.map(p =>
+      `<button type="button" class="btn btn-sm btn-outline-secondary"
+               onclick="document.getElementById('cost').value='${p}'">
+         NT$ ${p.toLocaleString()}
+       </button>`
+    ).join('');
+  } else {
+    presetsDiv.innerHTML = '';
+  }
+}
+
 function toggleReferral() {
   const notDesignated = document.getElementById('src_not_designated').checked;
   document.getElementById('referral_row').style.display = notDesignated ? '' : 'none';
 }
+
+// Initialise on load
+document.addEventListener('DOMContentLoaded', function () {
+  const checked = document.querySelector('.svc-radio:checked');
+  if (checked) applyServicePreset(checked.value);
+  {% if appointment %}
+  // Edit mode: keep existing cost, just restore preset buttons
+  document.getElementById('cost').value = '{{ appointment.cost | int }}';
+  {% endif %}
+});
 </script>
 
 {% endblock %}
