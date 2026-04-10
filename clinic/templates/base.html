@@ -45,8 +45,18 @@
         <li class="nav-item">
           <a class="nav-link nav-item-link {% if '/report' in request.path %}active{% endif %}"
              href="/report">
-            <i class="bi bi-bar-chart me-1"></i>每日報表
+            <i class="bi bi-bar-chart me-1"></i>報表
           </a>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link nav-item-link dropdown-toggle {% if '/salary' in request.path or '/therapists/settings' in request.path %}active{% endif %}"
+             href="#" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-cash-stack me-1"></i>薪資
+          </a>
+          <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+            <li><a class="dropdown-item" href="/salary"><i class="bi bi-calculator me-1"></i>薪資計算</a></li>
+            <li><a class="dropdown-item" href="/therapists/settings"><i class="bi bi-sliders me-1"></i>薪資設定</a></li>
+          </ul>
         </li>
       </ul>
     </div>

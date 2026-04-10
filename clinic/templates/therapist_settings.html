@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <p class="text-uppercase mb-0" style="font-size:0.68rem;letter-spacing:0.12em;color:var(--gold)">SETTINGS</p>
+    <h5 class="page-title mb-0">薪資設定</h5>
+  </div>
+  <a href="/salary" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-calculator me-1"></i>查看薪資計算
+  </a>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-header gold-header">
+        <p class="text-uppercase mb-0" style="font-size:0.65rem;letter-spacing:0.12em;color:var(--gold)">SALARY FORMULA</p>
+        <h6 class="mb-0 fw-600">各治療師薪資公式設定</h6>
+      </div>
+      <div class="card-body">
+        <form method="post">
+
+          {% for t in therapists %}
+          <div class="mb-4 pb-4 {% if not loop.last %}border-bottom{% endif %}">
+            <h6 class="fw-bold mb-3" style="color:var(--dark)">
+              <i class="bi bi-person-circle me-1" style="color:var(--gold)"></i>{{ t.name }}
+            </h6>
+
+            <div class="row g-3">
+              <!-- Base salary -->
+              <div class="col-sm-4">
+                <label class="form-label fw-semibold" style="font-size:0.82rem">底薪 (NT$)</label>
+                <input type="number" name="base_{{ t.id }}" class="form-control"
+                       min="0" step="1000"
+                       value="{{ t.base_salary | int if t.base_salary else 0 }}"
+                       placeholder="0">
+              </div>
+
+              <!-- Commission type -->
+              <div class="col-sm-4">
+                <label class="form-label fw-semibold" style="font-size:0.82rem">抽成方式</label>
+                <select name="ctype_{{ t.id }}" class="form-select"
+                        onchange="toggleCommissionLabel(this, {{ t.id }})">
+                  <option value="percent"
+                    {% if not t.commission_type or t.commission_type == 'percent' %}selected{% endif %}>
+                    百分比抽成 (%)
+                  </option>
+                  <option value="per_session"
+                    {% if t.commission_type == 'per_session' %}selected{% endif %}>
+                    每診次固定獎金 (NT$)
+                  </option>
+                </select>
+              </div>
+
+              <!-- Commission value -->
+              <div class="col-sm-4">
+                <label class="form-label fw-semibold" style="font-size:0.82rem"
+                       id="clabel_{{ t.id }}">
+                  {% if t.commission_type == 'per_session' %}每診次 (NT$){% else %}抽成比例 (%){% endif %}
+                </label>
+                <input type="number" name="cvalue_{{ t.id }}" class="form-control"
+                       min="0" step="0.1"
+                       value="{{ t.commission_value if t.commission_value else 0 }}"
+                       placeholder="0">
+              </div>
+            </div>
+
+            <!-- Preview formula -->
+            <div class="mt-2" style="font-size:0.78rem;color:var(--text-muted)">
+              公式：底薪 NT${{ t.base_salary | int if t.base_salary else 0 }} +
+              {% if t.commission_type == 'per_session' %}
+                診次數 × NT${{ t.commission_value | int if t.commission_value else 0 }}
+              {% else %}
+                治療收入 × {{ t.commission_value if t.commission_value else 0 }}%
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+
+          <div class="d-flex gap-2 justify-content-end mt-2">
+            <a href="/salary" class="btn btn-outline-secondary">
+              <i class="bi bi-x-lg me-1"></i>取消
+            </a>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-1"></i>儲存設定
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleCommissionLabel(sel, id) {
+  const label = document.getElementById('clabel_' + id);
+  label.textContent = sel.value === 'per_session' ? '每診次 (NT$)' : '抽成比例 (%)';
+}
+</script>
+
+{% endblock %}

@@ -1,23 +1,64 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="d-flex align-items-center justify-content-between mb-1 flex-wrap gap-2">
+<!-- Header -->
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
   <div>
-    <p class="text-uppercase mb-0" style="font-size:0.68rem;letter-spacing:0.12em;color:var(--gold)">DAILY REPORT</p>
-    <h5 class="page-title mb-0">每日報表</h5>
+    <p class="text-uppercase mb-0" style="font-size:0.68rem;letter-spacing:0.12em;color:var(--gold)">REPORT</p>
+    <h5 class="page-title mb-0">營運報表</h5>
   </div>
+  <!-- Date picker (day) / month picker (month) / year -->
+  {% if period == 'day' %}
   <form class="d-flex gap-2 align-items-center" method="get">
+    <input type="hidden" name="period" value="day">
     <input type="date" name="date" class="form-control" style="width:175px"
-           value="{{ report_date.isoformat() }}"
-           onchange="this.form.submit()">
+           value="{{ report_date.isoformat() }}" onchange="this.form.submit()">
   </form>
+  {% elif period == 'month' %}
+  <form class="d-flex gap-2 align-items-center" method="get">
+    <input type="hidden" name="period" value="month">
+    <input type="month" name="_month" class="form-control" style="width:160px"
+           value="{{ anchor.strftime('%Y-%m') }}"
+           onchange="this.form.action='/report?period=month&date='+this.value+'-01';this.form.submit()">
+  </form>
+  {% elif period == 'year' %}
+  <form class="d-flex gap-2 align-items-center" method="get">
+    <input type="hidden" name="period" value="year">
+    <select name="date" class="form-select" style="width:130px" onchange="this.form.submit()">
+      {% for y in range(anchor.year - 3, anchor.year + 2) %}
+      <option value="{{ y }}-01-01" {% if y == anchor.year %}selected{% endif %}>{{ y }}年</option>
+      {% endfor %}
+    </select>
+  </form>
+  {% endif %}
 </div>
 
-<p class="text-muted mb-4" style="font-size:0.82rem">
-  {{ report_date.strftime('%Y年%m月%d日') }}（週{{ weekday }}）
-</p>
+<!-- Period tabs -->
+<ul class="nav nav-tabs mb-0" style="border-bottom:none">
+  {% for p, label in [('day','日報'),('week','週報'),('month','月報'),('year','年報')] %}
+  <li class="nav-item">
+    <a class="nav-link {% if period == p %}active{% endif %}"
+       href="/report?period={{ p }}&date={{ anchor.isoformat() }}"
+       style="font-size:0.83rem;padding:0.4rem 1rem">{{ label }}</a>
+  </li>
+  {% endfor %}
+</ul>
 
-<!-- Summary cards -->
+<!-- Period navigation bar -->
+<div class="d-flex align-items-center justify-content-between px-1 py-2 mb-3"
+     style="background:var(--bg);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius) var(--radius)">
+  <a href="/report?period={{ period }}&date={{ prev_anchor }}"
+     class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-chevron-left"></i>
+  </a>
+  <span style="font-size:0.9rem;font-weight:500;color:var(--dark)">{{ period_label }}</span>
+  <a href="/report?period={{ period }}&date={{ next_anchor }}"
+     class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-chevron-right"></i>
+  </a>
+</div>
+
+<!-- Summary stat cards -->
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3">
     <div class="stat-card">
@@ -39,13 +80,108 @@
   </div>
   <div class="col-6 col-md-3">
     <div class="stat-card gold-accent">
-      <div class="stat-num">{{ revenue | int }}</div>
-      <div class="stat-label">當日收入 NT$</div>
+      <div class="stat-num">{{ revenue | int | string | replace('-','') }}</div>
+      <div class="stat-label">
+        {% if period == 'day' %}當日{% elif period == 'week' %}本週{% elif period == 'month' %}本月{% else %}年度{% endif %}
+        收入 NT$
+      </div>
     </div>
   </div>
 </div>
 
-<!-- Per-therapist breakdown -->
+<!-- ── YEAR view: monthly breakdown table ───────────────────────────────── -->
+{% if period == 'year' %}
+<div class="card shadow-sm mb-4">
+  <div class="card-header fw-semibold">
+    <i class="bi bi-calendar-range me-1"></i>各月統計
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>月份</th>
+          <th class="text-center">預約數</th>
+          <th class="text-center">已完成</th>
+          <th class="text-end">收入 NT$</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in monthly_breakdown %}
+        <tr {% if row.revenue == 0 and row.count == 0 %}class="text-muted"{% endif %}>
+          <td class="fw-semibold">{{ row.label }}</td>
+          <td class="text-center">{{ row.count }}</td>
+          <td class="text-center">{{ row.completed }}</td>
+          <td class="text-end">{{ row.revenue | int }}</td>
+          <td class="text-end">
+            <a href="/report?period=month&date={{ row.key }}-01"
+               class="btn btn-xs btn-outline-secondary">詳情</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="table-light fw-bold">
+        <tr>
+          <td>合計</td>
+          <td class="text-center">{{ total }}</td>
+          <td class="text-center">{{ appointments | selectattr('status','eq','completed') | list | length }}</td>
+          <td class="text-end">{{ revenue | int }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── WEEK / MONTH view: daily breakdown table ─────────────────────────── -->
+{% if period in ('week', 'month') %}
+<div class="card shadow-sm mb-4">
+  <div class="card-header fw-semibold">
+    <i class="bi bi-calendar3 me-1"></i>每日明細
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>日期</th>
+          <th class="text-center">預約數</th>
+          <th class="text-center">已完成</th>
+          <th class="text-end">收入 NT$</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in daily_breakdown %}
+        <tr {% if row.count == 0 %}class="text-muted"{% endif %}>
+          <td class="fw-semibold">{{ row.date }} <span class="text-muted">(週{{ row.weekday }})</span></td>
+          <td class="text-center">{{ row.count }}</td>
+          <td class="text-center">{{ row.completed }}</td>
+          <td class="text-end">{{ row.revenue | int }}</td>
+          <td class="text-end">
+            <a href="/report?period=day&date={{ row.date }}"
+               class="btn btn-xs btn-outline-secondary">詳情</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted py-3">此期間無工作日</td></tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="table-light fw-bold">
+        <tr>
+          <td>合計</td>
+          <td class="text-center">{{ total }}</td>
+          <td class="text-center">{{ appointments | selectattr('status','eq','completed') | list | length }}</td>
+          <td class="text-end">{{ revenue | int }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Per-therapist breakdown (all periods) -->
 <div class="row g-3 mb-4">
   {% for t in therapists %}
   {% set s = t_stats[t.id] %}
@@ -65,11 +201,11 @@
         </div>
         <div class="d-flex justify-content-between">
           <span class="text-muted small">收入</span>
-          <span class="fw-semibold text-info">NT$ {{ s.revenue | int }}</span>
+          <span class="fw-semibold" style="color:var(--gold)">NT$ {{ s.revenue | int }}</span>
         </div>
       </div>
-      <!-- Appointment list for this therapist -->
-      {% if s.appointments %}
+      <!-- Show appointment list only for day view -->
+      {% if period == 'day' and s.appointments %}
       <ul class="list-group list-group-flush small">
         {% for a in s.appointments %}
         <li class="list-group-item d-flex justify-content-between align-items-center px-3 py-2">
@@ -91,7 +227,7 @@
         </li>
         {% endfor %}
       </ul>
-      {% else %}
+      {% elif period == 'day' %}
       <div class="card-footer text-muted text-center small py-2">無預約</div>
       {% endif %}
     </div>
@@ -99,7 +235,8 @@
   {% endfor %}
 </div>
 
-<!-- Full appointment table -->
+<!-- Full appointment table (day view only) -->
+{% if period == 'day' %}
 <div class="card shadow-sm">
   <div class="card-header fw-semibold">
     <i class="bi bi-table me-1"></i>完整預約明細
@@ -152,5 +289,56 @@
     </table>
   </div>
 </div>
+{% endif %}
+
+<!-- Full appointment table for week/month (condensed) -->
+{% if period in ('week', 'month') and appointments %}
+<div class="card shadow-sm">
+  <div class="card-header fw-semibold">
+    <i class="bi bi-table me-1"></i>完整預約明細
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 small">
+      <thead class="table-light">
+        <tr>
+          <th>日期</th>
+          <th>時間</th>
+          <th>個案</th>
+          <th>治療師</th>
+          <th class="text-end">費用</th>
+          <th class="text-center">狀態</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in appointments %}
+        <tr class="{{ 'table-secondary text-muted' if a.status == 'cancelled' else '' }}">
+          <td>{{ a.date }}</td>
+          <td>{{ a.start_time }}</td>
+          <td class="fw-semibold">{{ a.patient_name }}</td>
+          <td>{{ a.therapist_name }}</td>
+          <td class="text-end">NT$ {{ a.cost | int }}</td>
+          <td class="text-center">
+            {% if a.status == 'completed' %}
+              <span class="badge bg-success">已完成</span>
+            {% elif a.status == 'cancelled' %}
+              <span class="badge bg-secondary">已取消</span>
+            {% else %}
+              <span class="badge bg-warning text-dark">已預約</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="table-light fw-bold">
+        <tr>
+          <td colspan="4">合計（已完成）</td>
+          <td class="text-end">NT$ {{ revenue | int }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% endif %}
 
 {% endblock %}
