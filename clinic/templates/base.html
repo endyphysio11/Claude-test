@@ -3,45 +3,49 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>物理治療所管理系統</title>
+  <title>鉑適物理治療</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-  <div class="container-fluid px-3">
-    <a class="navbar-brand fw-bold fs-5" href="/">
-      <i class="bi bi-hospital-fill me-2"></i>物理治療所
+<nav class="navbar navbar-expand-lg navbar-dark site-nav">
+  <div class="container-fluid px-4">
+    <a class="navbar-brand" href="/">
+      <span class="brand-en">THE PLATINUM</span>
+      <span class="brand-zh">鉑適物理治療</span>
     </a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+    <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="nav">
       <ul class="navbar-nav ms-auto gap-1">
         <li class="nav-item">
-          <a class="nav-link px-3 {% if request.path == '/' or request.path == '/calendar' %}active{% endif %}"
+          <a class="nav-link nav-item-link {% if request.path == '/' or '/calendar' in request.path %}active{% endif %}"
              href="/">
             <i class="bi bi-calendar3 me-1"></i>預約日曆
           </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link px-3 {% if '/patients' in request.path %}active{% endif %}"
+          <a class="nav-link nav-item-link {% if '/patients' in request.path %}active{% endif %}"
              href="/patients">
-            <i class="bi bi-people-fill me-1"></i>個案管理
+            <i class="bi bi-people me-1"></i>個案管理
           </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link px-3 {% if '/records/new' in request.path %}active{% endif %}"
+          <a class="nav-link nav-item-link {% if '/records/new' in request.path %}active{% endif %}"
              href="/records/new">
-            <i class="bi bi-file-medical-fill me-1"></i>新增病歷
+            <i class="bi bi-file-medical me-1"></i>新增病歷
           </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link px-3 {% if '/report' in request.path %}active{% endif %}"
+          <a class="nav-link nav-item-link {% if '/report' in request.path %}active{% endif %}"
              href="/report">
-            <i class="bi bi-bar-chart-fill me-1"></i>每日報表
+            <i class="bi bi-bar-chart me-1"></i>每日報表
           </a>
         </li>
       </ul>
@@ -49,11 +53,11 @@
   </div>
 </nav>
 
-<div class="container-fluid px-3 py-3">
+<div class="container-fluid px-4 py-4">
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
       {% for category, message in messages %}
-        <div class="alert alert-{{ category }} alert-dismissible fade show mb-2" role="alert">
+        <div class="alert alert-{{ category }} alert-dismissible fade show mb-3 rounded-3" role="alert">
           {{ message }}
           <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>

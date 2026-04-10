@@ -105,7 +105,7 @@ def init_db():
     ''')
     if conn.execute("SELECT COUNT(*) FROM therapists").fetchone()[0] == 0:
         conn.executemany("INSERT INTO therapists (name) VALUES (?)",
-                         [('治療師甲',), ('治療師乙',), ('治療師丙',)])
+                         [('Endy',), ('Jeffrey',), ('Diana',)])
     conn.commit()
     conn.close()
 

@@ -1,115 +1,303 @@
+/* ── Design tokens ───────────────────────────────────── */
+:root {
+  --dark:        #1c1c1c;
+  --gold:        #b8976c;
+  --gold-light:  #f5efe6;
+  --gold-mid:    #d4b896;
+  --bg:          #f6f5f2;
+  --white:       #ffffff;
+  --text:        #2a2a2a;
+  --text-muted:  #7a7672;
+  --border:      #e2ddd6;
+  --radius:      8px;
+
+  /* status */
+  --status-scheduled-bg:    #eef2f8;
+  --status-scheduled-border:#7a9cc8;
+  --status-completed-bg:    #eef4ee;
+  --status-completed-border:#6a9e6a;
+  --status-cancelled-bg:    #f2f2f2;
+  --status-cancelled-border:#b0acaa;
+}
+
 /* ── Global ──────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
 body {
-  background-color: #f5f7fa;
-  font-size: 0.9rem;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', 'Noto Sans TC', sans-serif;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+/* ── Navbar ──────────────────────────────────────────── */
+.site-nav {
+  background-color: var(--dark);
+  border-bottom: 1px solid #2e2e2e;
+  padding: 0.6rem 0;
+}
+
+.navbar-brand {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  text-decoration: none;
+}
+.brand-en {
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  color: var(--gold);
+  font-weight: 500;
+  text-transform: uppercase;
+}
+.brand-zh {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 0.04em;
+}
+
+.nav-item-link {
+  color: #b0aba4 !important;
+  font-size: 0.82rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  padding: 0.45rem 0.85rem !important;
+  border-radius: 5px;
+  transition: color 0.15s, background 0.15s;
+}
+.nav-item-link:hover {
+  color: #ffffff !important;
+  background: rgba(255,255,255,0.06);
+}
+.nav-item-link.active {
+  color: var(--gold) !important;
+  background: rgba(184,151,108,0.12);
+}
+
+/* ── Cards ───────────────────────────────────────────── */
+.card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--white);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.card-header {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  font-weight: 500;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  padding: 0.85rem 1.1rem;
+}
+.card-header.gold-header {
+  background: var(--gold-light);
+  border-bottom: 1px solid var(--gold-mid);
+  color: #6b4f2a;
+}
+
+/* ── Buttons ─────────────────────────────────────────── */
+.btn-primary {
+  background-color: var(--dark);
+  border-color: var(--dark);
+  color: var(--white);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.btn-primary:hover, .btn-primary:focus {
+  background-color: #333;
+  border-color: #333;
+}
+.btn-gold {
+  background-color: var(--gold);
+  border-color: var(--gold);
+  color: var(--white);
+  font-weight: 500;
+}
+.btn-gold:hover {
+  background-color: #a2845c;
+  border-color: #a2845c;
+  color: var(--white);
+}
+.btn-success {
+  background-color: #4d8a5a;
+  border-color: #4d8a5a;
+}
+.btn-outline-secondary {
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+.btn-outline-secondary:hover {
+  background-color: var(--bg);
+  color: var(--text);
+  border-color: #c9c3bb;
+}
+
+/* ── Tables ──────────────────────────────────────────── */
+.table {
+  color: var(--text);
+}
+.table-light th, thead.table-light th {
+  background-color: #f0ede8;
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-color: var(--border);
+}
+.table-bordered td, .table-bordered th {
+  border-color: var(--border);
 }
 
 /* ── Schedule table ──────────────────────────────────── */
 .schedule-table {
   table-layout: fixed;
-  min-width: 600px;
+  min-width: 580px;
 }
-
 .time-header {
-  width: 72px;
-  font-size: 0.8rem;
+  width: 68px;
+  background: #f0ede8 !important;
+  color: var(--text-muted) !important;
+  font-size: 0.72rem !important;
+  letter-spacing: 0.04em;
 }
-
 .therapist-header {
-  font-size: 0.9rem;
-  padding: 10px 6px;
+  font-size: 0.85rem;
+  padding: 10px 8px;
+  background: #f0ede8 !important;
+  color: var(--text) !important;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
-
 .time-cell {
-  width: 72px;
-  font-size: 0.78rem;
-  background-color: #f8f9fa;
+  width: 68px;
+  font-size: 0.75rem;
+  background: #faf8f5;
   user-select: none;
-  padding: 0;
+  padding: 0 4px;
+  color: var(--text-muted);
 }
+.hour-row td  { height: 40px; }
+.half-row td  { height: 26px; }
 
-/* Full-hour rows are slightly taller */
-.hour-row td {
-  height: 42px;
-}
-
-.half-row td {
-  height: 28px;
-}
-
-/* Empty slot – clickable */
+/* Empty slot */
 .slot-empty {
   cursor: pointer;
-  transition: background-color 0.15s;
+  transition: background 0.12s;
 }
-.slot-empty:hover {
-  background-color: #dbeafe;
-}
+.slot-empty:hover { background-color: var(--gold-light) !important; }
 
 /* Booked slot */
 .slot-booked {
-  padding: 4px 6px !important;
+  padding: 5px 7px !important;
   vertical-align: top;
 }
 
 /* Status colours */
 .status-scheduled {
-  background-color: #dbeafe;
-  border-left: 3px solid #2563eb !important;
+  background-color: var(--status-scheduled-bg);
+  border-left: 3px solid var(--status-scheduled-border) !important;
 }
 .status-completed {
-  background-color: #dcfce7;
-  border-left: 3px solid #16a34a !important;
+  background-color: var(--status-completed-bg);
+  border-left: 3px solid var(--status-completed-border) !important;
 }
 .status-cancelled {
-  background-color: #f1f5f9;
-  border-left: 3px solid #94a3b8 !important;
-  opacity: 0.6;
+  background-color: var(--status-cancelled-bg);
+  border-left: 3px solid var(--status-cancelled-border) !important;
+  opacity: 0.55;
 }
 
-/* Appointment card inside a cell */
-.appt-card {
-  font-size: 0.78rem;
-  line-height: 1.3;
-  overflow: hidden;
-}
-
+/* Appointment card */
+.appt-card { font-size: 0.77rem; line-height: 1.35; }
 .appt-name {
   font-size: 0.82rem;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--text);
 }
 
-/* Tiny action buttons inside appointment cards */
+/* Tiny action buttons */
 .btn-xs {
   padding: 1px 5px;
-  font-size: 0.7rem;
-  line-height: 1.4;
+  font-size: 0.68rem;
+  line-height: 1.5;
   border-radius: 3px;
 }
 
-/* Legend dots in calendar footer */
-.legend-dot {
-  font-size: 1.1rem;
-}
-.legend-dot.status-scheduled { color: #2563eb; }
-.legend-dot.status-completed  { color: #16a34a; }
-.legend-dot.status-cancelled  { color: #94a3b8; }
+/* Legend */
+.legend-dot { font-size: 1rem; }
+.legend-dot.status-scheduled { color: var(--status-scheduled-border); }
+.legend-dot.status-completed  { color: var(--status-completed-border); }
+.legend-dot.status-cancelled  { color: var(--status-cancelled-border); }
 
-/* ── Section headings inside forms ───────────────────── */
+/* ── Form section titles ─────────────────────────────── */
 .section-title {
-  font-size: 0.85rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
+  color: var(--gold) !important;
+  border-bottom-color: var(--border) !important;
+  padding-bottom: 6px;
+  margin-bottom: 14px;
 }
 
-/* ── Misc ─────────────────────────────────────────────── */
-.card {
-  border-radius: 8px;
-}
-.navbar .nav-link.active {
-  background-color: rgba(255,255,255,0.15);
+/* ── Form controls ───────────────────────────────────── */
+.form-control, .form-select {
+  border-color: var(--border);
   border-radius: 6px;
+  font-size: 0.87rem;
+  color: var(--text);
 }
+.form-control:focus, .form-select:focus {
+  border-color: var(--gold-mid);
+  box-shadow: 0 0 0 3px rgba(184,151,108,0.15);
+}
+.form-label { font-size: 0.82rem; color: var(--text); }
+.form-check-input:checked {
+  background-color: var(--dark);
+  border-color: var(--dark);
+}
+
+/* ── Badges ──────────────────────────────────────────── */
+.badge.bg-primary { background-color: var(--dark) !important; }
+
+/* ── Alert overrides ─────────────────────────────────── */
+.alert-success { background: #eef5ee; border-color: #b5d4b5; color: #2d5a2d; }
+.alert-warning { background: var(--gold-light); border-color: var(--gold-mid); color: #6b4f2a; }
+
+/* ── Page headings ───────────────────────────────────── */
+.page-title {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--dark);
+}
+
+/* ── Summary stat cards ──────────────────────────────── */
+.stat-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--white);
+  padding: 1.1rem 1.2rem;
+  text-align: center;
+}
+.stat-card .stat-num {
+  font-size: 1.8rem;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  color: var(--dark);
+}
+.stat-card .stat-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.stat-card.gold-accent .stat-num { color: var(--gold); }
