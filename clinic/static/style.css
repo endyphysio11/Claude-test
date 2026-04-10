@@ -301,3 +301,103 @@ body {
   margin-top: 2px;
 }
 .stat-card.gold-accent .stat-num { color: var(--gold); }
+
+/* ── FullCalendar overrides ──────────────────────────── */
+.fc {
+  font-family: 'Inter', 'Noto Sans TC', sans-serif;
+  font-size: 0.85rem;
+}
+
+/* Toolbar buttons */
+.fc .fc-button-primary {
+  background-color: var(--dark) !important;
+  border-color: var(--dark) !important;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  box-shadow: none !important;
+}
+.fc .fc-button-primary:hover {
+  background-color: #2e2e2e !important;
+  border-color: #2e2e2e !important;
+}
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active {
+  background-color: var(--gold) !important;
+  border-color: var(--gold) !important;
+}
+.fc .fc-toolbar-title {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--dark);
+}
+
+/* Day column headers */
+.fc .fc-col-header-cell {
+  background: #f0ede8;
+  padding: 8px 4px;
+  border-color: var(--border);
+}
+.fc .fc-col-header-cell-cushion {
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.fc .fc-day-today .fc-col-header-cell-cushion {
+  color: var(--gold);
+}
+
+/* Time labels */
+.fc .fc-timegrid-slot { height: 2rem; border-color: var(--border); }
+.fc .fc-timegrid-slot-label-cushion {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  padding-right: 8px;
+}
+
+/* Today highlight */
+.fc .fc-day-today { background: rgba(184,151,108,0.05) !important; }
+
+/* Non-business shade */
+.fc .fc-non-business { background: rgba(0,0,0,0.02); }
+
+/* Now indicator */
+.fc .fc-timegrid-now-indicator-line { border-color: var(--gold); }
+.fc .fc-timegrid-now-indicator-arrow { border-top-color: var(--gold); border-bottom-color: var(--gold); }
+
+/* Events */
+.fc-event {
+  border-radius: 4px !important;
+  border: none !important;
+  padding: 3px 5px !important;
+  cursor: pointer;
+}
+.fc-event-inner { overflow: hidden; }
+.fc-event-patient {
+  font-weight: 600;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #fff;
+}
+.fc-event-meta {
+  font-size: 0.68rem;
+  color: rgba(255,255,255,0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Selection highlight */
+.fc .fc-highlight { background: rgba(184,151,108,0.18); }
+
+/* Scrollbar */
+.fc-scroller::-webkit-scrollbar { width: 4px; }
+.fc-scroller::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}

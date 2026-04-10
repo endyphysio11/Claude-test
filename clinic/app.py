@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 import sqlite3
 import os
 from datetime import datetime, date, timedelta
@@ -156,40 +156,98 @@ def compute_grid(appointments, therapists):
 
 @app.route('/')
 def index():
-    return redirect(url_for('calendar_view', date=nearest_workday(date.today()).isoformat()))
+    return redirect(url_for('calendar_view'))
 
 
 @app.route('/calendar')
 def calendar_view():
-    date_str = request.args.get('date', date.today().isoformat())
-    try:
-        current = datetime.strptime(date_str, '%Y-%m-%d').date()
-    except ValueError:
-        current = date.today()
-    current = nearest_workday(current)
-
     conn = get_db()
     therapists = conn.execute("SELECT * FROM therapists ORDER BY id").fetchall()
-    appointments = conn.execute("""
-        SELECT a.*, p.name AS patient_name
+    conn.close()
+    return render_template('calendar.html', therapists=therapists)
+
+
+@app.route('/appointments/api')
+def appointments_api():
+    """JSON feed for FullCalendar."""
+    COLORS = {
+        'Endy':    ('#4a6fa5', '#3a5a8f'),
+        'Jeffrey': ('#4a9070', '#3a7a5a'),
+        'Diana':   ('#b8976c', '#a2845c'),
+    }
+    DEFAULT_COLOR = ('#6b7280', '#4b5563')
+
+    start_str = (request.args.get('start') or '')[:10]
+    end_str   = (request.args.get('end')   or '')[:10]
+    if not start_str:
+        start_str = date.today().isoformat()
+    if not end_str:
+        end_str = start_str
+
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT a.*, p.name AS patient_name, t.name AS therapist_name
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
-        WHERE a.date = ? AND a.status != 'cancelled'
-        ORDER BY a.start_time
-    """, (current.isoformat(),)).fetchall()
+        JOIN therapists t ON a.therapist_id = t.id
+        WHERE a.date >= ? AND a.date < ?
+        ORDER BY a.date, a.start_time
+    """, (start_str, end_str)).fetchall()
     conn.close()
 
-    grid = compute_grid(appointments, therapists)
+    events = []
+    for a in rows:
+        bg, border = COLORS.get(a['therapist_name'], DEFAULT_COLOR)
+        if a['status'] == 'cancelled':
+            bg, border = '#9ca3af', '#6b7280'
+        elif a['status'] == 'completed':
+            bg = bg + 'bb'  # slightly translucent
 
-    return render_template('calendar.html',
-        current=current,
-        prev_date=prev_workday(current).isoformat(),
-        next_date=next_workday(current).isoformat(),
-        therapists=therapists,
-        time_slots=TIME_SLOTS,
-        grid=grid,
-        weekday=WEEKDAY_ZH[current.weekday()],
-    )
+        h, m  = map(int, a['start_time'].split(':'))
+        total = h * 60 + m + a['duration']
+        eh, em = divmod(total, 60)
+
+        events.append({
+            'id':    str(a['id']),
+            'title': a['patient_name'],
+            'start': f"{a['date']}T{a['start_time']}:00",
+            'end':   f"{a['date']}T{eh:02d}:{em:02d}:00",
+            'backgroundColor': bg,
+            'borderColor':     border,
+            'editable': a['status'] == 'scheduled',
+            'extendedProps': {
+                'patient_id':    a['patient_id'],
+                'therapist_id':  a['therapist_id'],
+                'therapist_name': a['therapist_name'],
+                'cost':     int(a['cost']),
+                'duration': a['duration'],
+                'notes':    a['notes'] or '',
+                'status':   a['status'],
+            },
+        })
+    return jsonify(events)
+
+
+@app.route('/appointments/<int:appt_id>/move', methods=['POST'])
+def move_appointment(appt_id):
+    """Called by FullCalendar drag-and-drop / resize."""
+    data     = request.get_json()
+    new_date = data.get('date')
+    new_time = data.get('start_time')
+    new_dur  = data.get('duration')
+
+    conn = get_db()
+    if new_dur:
+        conn.execute(
+            "UPDATE appointments SET date=?, start_time=?, duration=? WHERE id=?",
+            (new_date, new_time, new_dur, appt_id))
+    else:
+        conn.execute(
+            "UPDATE appointments SET date=?, start_time=? WHERE id=?",
+            (new_date, new_time, appt_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
 
 
 # ─── appointments ─────────────────────────────────────────────────────────────

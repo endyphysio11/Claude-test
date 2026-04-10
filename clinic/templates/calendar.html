@@ -1,131 +1,233 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- Date navigation -->
+<!-- FullCalendar -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
+<!-- Therapist legend + new appointment button -->
 <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-  <a href="/calendar?date={{ prev_date }}" class="btn btn-outline-secondary">
-    <i class="bi bi-chevron-left"></i> 前一天
+  <div class="d-flex gap-3 align-items-center flex-wrap">
+    {% set colors = {'Endy':'#4a6fa5','Jeffrey':'#4a9070','Diana':'#b8976c'} %}
+    {% for t in therapists %}
+    <div class="d-flex align-items-center gap-2">
+      <span style="width:10px;height:10px;border-radius:2px;background:{{ colors.get(t.name,'#6b7280') }};display:inline-block;flex-shrink:0"></span>
+      <span style="font-size:0.82rem;color:var(--text-muted)">{{ t.name }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  <a href="/appointments/new" class="btn btn-sm btn-primary px-3">
+    <i class="bi bi-plus-lg me-1"></i>新增預約
   </a>
+</div>
 
-  <div class="text-center">
-    <h5 class="page-title mb-0">
-      {{ current.strftime('%Y年%m月%d日') }}
-      <span class="ms-2" style="font-size:0.75rem;color:var(--gold);letter-spacing:0.06em;font-weight:400">週{{ weekday }}</span>
-    </h5>
-    <small class="text-muted" style="font-size:0.75rem">點擊空白格快速新增預約</small>
+<!-- Calendar container -->
+<div class="card p-3" style="min-height:600px">
+  <div id="calendar"></div>
+</div>
+
+<!-- Event detail modal -->
+<div class="modal fade" id="eventModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:380px">
+    <div class="modal-content border-0 shadow">
+
+      <div class="modal-header pb-1" id="modal-header-bar" style="border-radius:8px 8px 0 0">
+        <div>
+          <div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;opacity:0.75"
+               id="modal-therapist"></div>
+          <h6 class="modal-title fw-bold mb-0 mt-1" id="modal-title"></h6>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body py-3 px-4">
+        <div class="d-flex flex-column gap-2">
+          <div class="d-flex justify-content-between">
+            <span style="font-size:0.78rem;color:var(--text-muted)">時間</span>
+            <span id="modal-time" style="font-size:0.85rem"></span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span style="font-size:0.78rem;color:var(--text-muted)">時長</span>
+            <span id="modal-duration" style="font-size:0.85rem"></span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span style="font-size:0.78rem;color:var(--text-muted)">費用</span>
+            <span id="modal-cost" style="font-size:0.85rem"></span>
+          </div>
+          <div id="modal-notes-row" class="d-flex justify-content-between" style="display:none!important">
+            <span style="font-size:0.78rem;color:var(--text-muted)">備註</span>
+            <span id="modal-notes" style="font-size:0.82rem;font-style:italic;color:var(--text-muted);text-align:right;max-width:220px"></span>
+          </div>
+          <div class="pt-1">
+            <span id="modal-status" class="badge rounded-pill"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer pt-0 gap-2 flex-wrap justify-content-start px-4 pb-3" style="border:none">
+        <a id="modal-edit-btn" href="#" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-pencil me-1"></i>編輯
+        </a>
+        <a id="modal-record-btn" href="#" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-file-earmark-plus me-1"></i>病歷
+        </a>
+        <form id="modal-complete-form" method="post" class="m-0">
+          <button type="submit" id="modal-complete-btn" class="btn btn-sm btn-success">
+            <i class="bi bi-check-lg me-1"></i>完成
+          </button>
+        </form>
+        <form id="modal-cancel-form" method="post" class="m-0"
+              onsubmit="return confirm('確定取消此預約？')">
+          <button type="submit" class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </form>
+      </div>
+
+    </div>
   </div>
-
-  <div class="d-flex gap-2">
-    <a href="/calendar?date={{ next_date }}" class="btn btn-outline-secondary">
-      下一天 <i class="bi bi-chevron-right"></i>
-    </a>
-    <a href="/appointments/new?date={{ current.isoformat() }}" class="btn btn-primary">
-      <i class="bi bi-plus-lg"></i> 新增預約
-    </a>
-  </div>
 </div>
 
-<!-- Schedule grid -->
-<div class="table-responsive shadow-sm rounded">
-  <table class="table table-bordered mb-0 schedule-table">
-    <thead class="table-primary">
-      <tr>
-        <th class="time-header text-center align-middle">時間</th>
-        {% for t in therapists %}
-        <th class="therapist-header text-center align-middle">
-          <i class="bi bi-person-circle me-1"></i>{{ t.name }}
-        </th>
-        {% endfor %}
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in grid %}
-        {% set slot = time_slots[loop.index0] %}
-        <tr class="{{ 'hour-row' if ':00' in slot else 'half-row' }}">
+<script>
+document.addEventListener('DOMContentLoaded', function () {
 
-          <!-- Time label -->
-          <td class="time-cell text-center align-middle p-0">
-            {% if ':00' in slot %}
-              <span class="fw-bold text-primary">{{ slot }}</span>
-            {% else %}
-              <small class="text-muted">{{ slot }}</small>
-            {% endif %}
-          </td>
+  const calendarEl = document.getElementById('calendar');
+  const modal      = new bootstrap.Modal(document.getElementById('eventModal'));
 
-          <!-- Therapist columns -->
-          {% for cell in row %}
-            {% set t = therapists[loop.index0] %}
+  const calendar = new FullCalendar.Calendar(calendarEl, {
 
-            {% if cell is none %}
-              <!-- empty – clickable to quick-book -->
-              <td class="slot-empty"
-                  onclick="location.href='/appointments/new?date={{ current.isoformat() }}&therapist_id={{ t.id }}&start_time={{ slot }}'">
-              </td>
+    // ── Views ──────────────────────────────────────────
+    initialView: 'timeGridWeek',
+    headerToolbar: {
+      left:   'prev,next today',
+      center: 'title',
+      right:  'timeGridWeek,timeGridDay',
+    },
+    buttonText: { today: '今天', week: '週', day: '日' },
+    titleFormat: { year: 'numeric', month: 'long' },
+    dayHeaderFormat: { weekday: 'short', day: 'numeric' },
 
-            {% elif cell.start %}
-              <!-- appointment block -->
-              <td class="slot-booked status-{{ cell.appt.status }}"
-                  rowspan="{{ cell.rowspan }}">
-                <div class="appt-card">
-                  <div class="appt-name fw-bold text-truncate">{{ cell.appt.patient_name }}</div>
-                  <div class="small mt-1 text-muted">
-                    <i class="bi bi-clock me-1"></i>{{ cell.appt.start_time }}
-                    &nbsp;·&nbsp;{{ cell.appt.duration }}分鐘
-                  </div>
-                  <div class="small">
-                    <i class="bi bi-currency-dollar"></i>NT$&nbsp;{{ cell.appt.cost | int }}
-                  </div>
-                  {% if cell.appt.notes %}
-                  <div class="small text-muted fst-italic text-truncate">{{ cell.appt.notes }}</div>
-                  {% endif %}
+    // ── Time range ─────────────────────────────────────
+    slotMinTime:  '10:00:00',
+    slotMaxTime:  '20:00:00',
+    slotDuration: '00:30:00',
+    scrollTime:   '10:00:00',
+    hiddenDays:   [0, 6],
+    allDaySlot:   false,
+    nowIndicator: true,
 
-                  <!-- Action buttons -->
-                  <div class="appt-actions d-flex gap-1 mt-2 flex-wrap">
-                    <a href="/appointments/{{ cell.appt.id }}/edit"
-                       class="btn btn-xs btn-light border"
-                       title="編輯">
-                      <i class="bi bi-pencil-fill"></i>
-                    </a>
-                    {% if cell.appt.status == 'scheduled' %}
-                    <form method="post"
-                          action="/appointments/{{ cell.appt.id }}/complete"
-                          class="d-inline">
-                      <button class="btn btn-xs btn-success" title="標記完成">
-                        <i class="bi bi-check-lg"></i>
-                      </button>
-                    </form>
-                    {% endif %}
-                    <a href="/records/new?patient_id={{ cell.appt.patient_id }}&appointment_id={{ cell.appt.id }}"
-                       class="btn btn-xs btn-info text-white" title="新增病歷">
-                      <i class="bi bi-file-earmark-plus"></i>
-                    </a>
-                    <form method="post"
-                          action="/appointments/{{ cell.appt.id }}/cancel"
-                          class="d-inline"
-                          onsubmit="return confirm('確定取消此預約？')">
-                      <button class="btn btn-xs btn-outline-danger" title="取消預約">
-                        <i class="bi bi-x-lg"></i>
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              </td>
+    // ── Business hours shade ───────────────────────────
+    businessHours: {
+      daysOfWeek: [1,2,3,4,5],
+      startTime: '10:00', endTime: '20:00',
+    },
 
-            {% endif %}
-            {# cell.start == False → occupied by rowspan, render nothing #}
+    // ── Interaction ────────────────────────────────────
+    editable:     true,
+    selectable:   true,
+    selectMirror: true,
+    eventResizableFromStart: true,
+    height: 'auto',
 
-          {% endfor %}
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+    // ── Events from API ────────────────────────────────
+    events: '/appointments/api',
 
-<!-- Legend -->
-<div class="d-flex gap-3 align-items-center mt-3 small flex-wrap">
-  <span class="legend-dot status-scheduled">&#9632;</span> 已預約
-  <span class="legend-dot status-completed">&#9632;</span> 已完成
-  <span class="legend-dot status-cancelled">&#9632;</span> 已取消
-</div>
+    // ── Click empty slot → new appointment ────────────
+    select: function (info) {
+      const d = info.startStr.slice(0, 10);
+      const t = info.startStr.slice(11, 16);
+      window.location.href = `/appointments/new?date=${d}&start_time=${t}`;
+    },
 
+    // ── Click event → show detail modal ───────────────
+    eventClick: function (info) {
+      const ev = info.event;
+      const p  = ev.extendedProps;
+
+      const fmt = t => t.toLocaleTimeString('zh-TW', { hour:'2-digit', minute:'2-digit', hour12: false });
+      const dateStr = ev.start.toLocaleDateString('zh-TW', { month:'long', day:'numeric', weekday:'short' });
+
+      document.getElementById('modal-title').textContent     = ev.title;
+      document.getElementById('modal-therapist').textContent = p.therapist_name;
+      document.getElementById('modal-time').textContent      = `${dateStr}　${fmt(ev.start)} – ${fmt(ev.end)}`;
+      document.getElementById('modal-duration').textContent  = `${p.duration} 分鐘`;
+      document.getElementById('modal-cost').textContent      = `NT$ ${p.cost.toLocaleString()}`;
+
+      const notesRow = document.getElementById('modal-notes-row');
+      if (p.notes) {
+        document.getElementById('modal-notes').textContent = p.notes;
+        notesRow.style.display = 'flex';
+      } else {
+        notesRow.style.display = 'none';
+      }
+
+      const badge = document.getElementById('modal-status');
+      const statusMap = {
+        scheduled: ['已預約',  'bg-warning text-dark'],
+        completed: ['已完成',  'bg-success text-white'],
+        cancelled: ['已取消',  'bg-secondary text-white'],
+      };
+      const [txt, cls] = statusMap[p.status] || ['—', 'bg-secondary'];
+      badge.textContent  = txt;
+      badge.className    = `badge rounded-pill ${cls}`;
+
+      // Set modal header background to match event colour
+      const hdr = document.getElementById('modal-header-bar');
+      hdr.style.backgroundColor = ev.backgroundColor || '#1c1c1c';
+      hdr.style.color = '#fff';
+
+      const id = ev.id;
+      document.getElementById('modal-edit-btn').href        = `/appointments/${id}/edit`;
+      document.getElementById('modal-record-btn').href      = `/records/new?patient_id=${p.patient_id}&appointment_id=${id}`;
+      document.getElementById('modal-complete-form').action = `/appointments/${id}/complete`;
+      document.getElementById('modal-cancel-form').action   = `/appointments/${id}/cancel`;
+      document.getElementById('modal-complete-btn').closest('form').style.display =
+        p.status === 'scheduled' ? '' : 'none';
+
+      modal.show();
+    },
+
+    // ── Drag to reschedule ─────────────────────────────
+    eventDrop: function (info) {
+      const s    = info.event.start;
+      const date = s.toISOString().slice(0, 10);
+      const time = `${String(s.getHours()).padStart(2,'0')}:${String(s.getMinutes()).padStart(2,'0')}`;
+      fetch(`/appointments/${info.event.id}/move`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, start_time: time }),
+      }).then(r => r.json()).then(d => { if (!d.ok) info.revert(); })
+        .catch(() => info.revert());
+    },
+
+    // ── Resize to change duration ──────────────────────
+    eventResize: function (info) {
+      const s    = info.event.start;
+      const e    = info.event.end;
+      const date = s.toISOString().slice(0, 10);
+      const time = `${String(s.getHours()).padStart(2,'0')}:${String(s.getMinutes()).padStart(2,'0')}`;
+      const dur  = Math.round((e - s) / 60000);
+      fetch(`/appointments/${info.event.id}/move`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, start_time: time, duration: dur }),
+      }).then(r => r.json()).then(d => { if (!d.ok) info.revert(); })
+        .catch(() => info.revert());
+    },
+
+    // ── Custom event display ───────────────────────────
+    eventContent: function (arg) {
+      const p = arg.event.extendedProps;
+      return {
+        html: `<div class="fc-event-inner">
+          <div class="fc-event-patient">${arg.event.title}</div>
+          <div class="fc-event-meta">${p.therapist_name}&ensp;·&ensp;NT$${p.cost.toLocaleString()}</div>
+        </div>`
+      };
+    },
+
+  });
+
+  calendar.render();
+});
+</script>
 {% endblock %}
