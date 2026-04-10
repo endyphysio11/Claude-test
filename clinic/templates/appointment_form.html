@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+
+    <div class="card shadow-sm">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">
+          <i class="bi bi-calendar-plus me-2"></i>
+          {{ '編輯預約' if appointment else '新增預約' }}
+        </h5>
+      </div>
+      <div class="card-body">
+
+        <form method="post">
+
+          <!-- 個案 -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">個案 <span class="text-danger">*</span></label>
+            <select name="patient_id" class="form-select" required>
+              <option value="">— 請選擇個案 —</option>
+              {% for p in patients %}
+              <option value="{{ p.id }}"
+                {% if appointment and appointment.patient_id == p.id %}selected{% endif %}>
+                {{ p.name }}{% if p.phone %} ({{ p.phone }}){% endif %}
+              </option>
+              {% endfor %}
+            </select>
+            <div class="form-text">
+              找不到個案？
+              <a href="/patients/new" target="_blank">新增個案</a>
+            </div>
+          </div>
+
+          <!-- 治療師 -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">治療師 <span class="text-danger">*</span></label>
+            <div class="d-flex gap-3 flex-wrap">
+              {% for t in therapists %}
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="therapist_id"
+                       id="t{{ t.id }}" value="{{ t.id }}" required
+                       {% if (appointment and appointment.therapist_id == t.id) or
+                             (not appointment and default_therapist == t.id|string) %}checked{% endif %}>
+                <label class="form-check-label" for="t{{ t.id }}">{{ t.name }}</label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- 日期 + 時間 -->
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">日期 <span class="text-danger">*</span></label>
+              <input type="date" name="date" class="form-control" required
+                     value="{{ default_date }}">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">開始時間 <span class="text-danger">*</span></label>
+              <select name="start_time" class="form-select" required>
+                {% for slot in time_slots %}
+                <option value="{{ slot }}"
+                  {% if slot == (appointment.start_time if appointment else default_time) %}selected{% endif %}>
+                  {{ slot }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <!-- 時長 + 費用 -->
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">治療時長</label>
+              <select name="duration" class="form-select">
+                {% for d in duration_options %}
+                <option value="{{ d }}"
+                  {% if appointment and appointment.duration == d %}selected
+                  {% elif not appointment and d == 60 %}selected{% endif %}>
+                  {{ d }} 分鐘
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">費用 (NT$)</label>
+              <input type="number" name="cost" class="form-control" min="0" step="50"
+                     value="{{ appointment.cost | int if appointment else '' }}"
+                     placeholder="0">
+            </div>
+          </div>
+
+          <!-- 狀態（僅編輯模式顯示） -->
+          {% if appointment %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">狀態</label>
+            <select name="status" class="form-select">
+              <option value="scheduled"  {% if appointment.status == 'scheduled'  %}selected{% endif %}>已預約</option>
+              <option value="completed"  {% if appointment.status == 'completed'  %}selected{% endif %}>已完成</option>
+              <option value="cancelled"  {% if appointment.status == 'cancelled'  %}selected{% endif %}>已取消</option>
+            </select>
+          </div>
+          {% endif %}
+
+          <!-- 備註 -->
+          <div class="mb-4">
+            <label class="form-label fw-semibold">備註</label>
+            <textarea name="notes" class="form-control" rows="2"
+                      placeholder="其他說明…">{{ appointment.notes if appointment else '' }}</textarea>
+          </div>
+
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="/calendar?date={{ default_date }}" class="btn btn-secondary">
+              <i class="bi bi-x-lg me-1"></i>取消
+            </a>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-1"></i>
+              {{ '更新' if appointment else '新增' }}
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

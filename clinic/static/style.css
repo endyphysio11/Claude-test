@@ -1,0 +1,115 @@
+/* ── Global ──────────────────────────────────────────── */
+body {
+  background-color: #f5f7fa;
+  font-size: 0.9rem;
+}
+
+/* ── Schedule table ──────────────────────────────────── */
+.schedule-table {
+  table-layout: fixed;
+  min-width: 600px;
+}
+
+.time-header {
+  width: 72px;
+  font-size: 0.8rem;
+}
+
+.therapist-header {
+  font-size: 0.9rem;
+  padding: 10px 6px;
+}
+
+.time-cell {
+  width: 72px;
+  font-size: 0.78rem;
+  background-color: #f8f9fa;
+  user-select: none;
+  padding: 0;
+}
+
+/* Full-hour rows are slightly taller */
+.hour-row td {
+  height: 42px;
+}
+
+.half-row td {
+  height: 28px;
+}
+
+/* Empty slot – clickable */
+.slot-empty {
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.slot-empty:hover {
+  background-color: #dbeafe;
+}
+
+/* Booked slot */
+.slot-booked {
+  padding: 4px 6px !important;
+  vertical-align: top;
+}
+
+/* Status colours */
+.status-scheduled {
+  background-color: #dbeafe;
+  border-left: 3px solid #2563eb !important;
+}
+.status-completed {
+  background-color: #dcfce7;
+  border-left: 3px solid #16a34a !important;
+}
+.status-cancelled {
+  background-color: #f1f5f9;
+  border-left: 3px solid #94a3b8 !important;
+  opacity: 0.6;
+}
+
+/* Appointment card inside a cell */
+.appt-card {
+  font-size: 0.78rem;
+  line-height: 1.3;
+  overflow: hidden;
+}
+
+.appt-name {
+  font-size: 0.82rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Tiny action buttons inside appointment cards */
+.btn-xs {
+  padding: 1px 5px;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  border-radius: 3px;
+}
+
+/* Legend dots in calendar footer */
+.legend-dot {
+  font-size: 1.1rem;
+}
+.legend-dot.status-scheduled { color: #2563eb; }
+.legend-dot.status-completed  { color: #16a34a; }
+.legend-dot.status-cancelled  { color: #94a3b8; }
+
+/* ── Section headings inside forms ───────────────────── */
+.section-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* ── Misc ─────────────────────────────────────────────── */
+.card {
+  border-radius: 8px;
+}
+.navbar .nav-link.active {
+  background-color: rgba(255,255,255,0.15);
+  border-radius: 6px;
+}

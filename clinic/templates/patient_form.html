@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card shadow-sm">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">
+          <i class="bi bi-person-fill me-2"></i>
+          {{ '編輯個案資料' if patient else '新增個案' }}
+        </h5>
+      </div>
+      <div class="card-body">
+
+        <form method="post">
+
+          <div class="row g-3">
+
+            <!-- 姓名 -->
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">姓名 <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" required maxlength="50"
+                     value="{{ patient.name if patient else '' }}" placeholder="請輸入姓名">
+            </div>
+
+            <!-- 性別 -->
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">性別</label>
+              <div class="d-flex gap-3 mt-1">
+                {% for g in ['男', '女', '其他'] %}
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="gender"
+                         id="g{{ g }}" value="{{ g }}"
+                         {% if patient and patient.gender == g %}checked{% endif %}>
+                  <label class="form-check-label" for="g{{ g }}">{{ g }}</label>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- 出生日期 -->
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">出生日期</label>
+              <input type="date" name="birth_date" class="form-control"
+                     value="{{ patient.birth_date if patient else '' }}">
+            </div>
+
+            <!-- 電話 -->
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">聯絡電話</label>
+              <input type="tel" name="phone" class="form-control" maxlength="20"
+                     value="{{ patient.phone if patient else '' }}"
+                     placeholder="09xx-xxx-xxx">
+            </div>
+
+            <!-- 地址 -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">地址</label>
+              <input type="text" name="address" class="form-control" maxlength="100"
+                     value="{{ patient.address if patient else '' }}"
+                     placeholder="縣市區路段…">
+            </div>
+
+            <!-- 緊急聯絡人 -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">緊急聯絡人</label>
+              <input type="text" name="emergency_contact" class="form-control" maxlength="80"
+                     value="{{ patient.emergency_contact if patient else '' }}"
+                     placeholder="姓名 / 關係 / 電話">
+            </div>
+
+            <!-- 備註 -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">備註</label>
+              <textarea name="notes" class="form-control" rows="2"
+                        placeholder="其他注意事項…">{{ patient.notes if patient else '' }}</textarea>
+            </div>
+
+          </div><!-- row -->
+
+          <div class="d-flex gap-2 justify-content-end mt-4">
+            <a href="/patients" class="btn btn-secondary">
+              <i class="bi bi-x-lg me-1"></i>取消
+            </a>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-1"></i>
+              {{ '更新' if patient else '新增' }}
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

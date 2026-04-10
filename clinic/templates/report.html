@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <h5 class="mb-0 fw-bold">
+    <i class="bi bi-bar-chart-fill text-primary me-2"></i>每日報表
+  </h5>
+  <form class="d-flex gap-2 align-items-center" method="get">
+    <input type="date" name="date" class="form-control" style="width:180px"
+           value="{{ report_date.isoformat() }}"
+           onchange="this.form.submit()">
+  </form>
+</div>
+
+<h6 class="text-muted mb-3">
+  {{ report_date.strftime('%Y年%m月%d日') }}（週{{ weekday }}）
+</h6>
+
+<!-- Summary cards -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-md-3">
+    <div class="card text-center shadow-sm border-0 bg-primary-subtle">
+      <div class="card-body py-3">
+        <div class="fs-2 fw-bold text-primary">{{ total }}</div>
+        <div class="small text-muted">預約總數</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-md-3">
+    <div class="card text-center shadow-sm border-0 bg-success-subtle">
+      <div class="card-body py-3">
+        <div class="fs-2 fw-bold text-success">
+          {{ appointments | selectattr('status','eq','completed') | list | length }}
+        </div>
+        <div class="small text-muted">已完成</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-md-3">
+    <div class="card text-center shadow-sm border-0 bg-warning-subtle">
+      <div class="card-body py-3">
+        <div class="fs-2 fw-bold text-warning">
+          {{ appointments | selectattr('status','eq','scheduled') | list | length }}
+        </div>
+        <div class="small text-muted">待完成</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-md-3">
+    <div class="card text-center shadow-sm border-0 bg-info-subtle">
+      <div class="card-body py-3">
+        <div class="fs-2 fw-bold text-info">NT$ {{ revenue | int }}</div>
+        <div class="small text-muted">當日收入</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Per-therapist breakdown -->
+<div class="row g-3 mb-4">
+  {% for t in therapists %}
+  {% set s = t_stats[t.id] %}
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-header fw-semibold bg-light">
+        <i class="bi bi-person-circle me-1 text-primary"></i>{{ s.name }}
+      </div>
+      <div class="card-body">
+        <div class="d-flex justify-content-between mb-1">
+          <span class="text-muted small">預約數</span>
+          <span class="fw-semibold">{{ s.count }}</span>
+        </div>
+        <div class="d-flex justify-content-between mb-1">
+          <span class="text-muted small">已完成</span>
+          <span class="fw-semibold text-success">{{ s.completed }}</span>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span class="text-muted small">收入</span>
+          <span class="fw-semibold text-info">NT$ {{ s.revenue | int }}</span>
+        </div>
+      </div>
+      <!-- Appointment list for this therapist -->
+      {% if s.appointments %}
+      <ul class="list-group list-group-flush small">
+        {% for a in s.appointments %}
+        <li class="list-group-item d-flex justify-content-between align-items-center px-3 py-2">
+          <span>
+            <span class="text-muted me-1">{{ a.start_time }}</span>
+            {{ a.patient_name }}
+            <span class="text-muted">({{ a.duration }}分)</span>
+          </span>
+          <span>
+            {% if a.status == 'completed' %}
+              <span class="badge bg-success">完成</span>
+            {% elif a.status == 'cancelled' %}
+              <span class="badge bg-secondary">取消</span>
+            {% else %}
+              <span class="badge bg-warning text-dark">預約中</span>
+            {% endif %}
+            <span class="ms-1 text-muted">NT${{ a.cost | int }}</span>
+          </span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="card-footer text-muted text-center small py-2">無預約</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Full appointment table -->
+<div class="card shadow-sm">
+  <div class="card-header fw-semibold">
+    <i class="bi bi-table me-1"></i>完整預約明細
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>時間</th>
+          <th>個案</th>
+          <th>治療師</th>
+          <th class="text-center">時長</th>
+          <th class="text-end">費用</th>
+          <th class="text-center">狀態</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in appointments %}
+        <tr class="{{ 'table-secondary text-muted' if a.status == 'cancelled' else '' }}">
+          <td>{{ a.start_time }}</td>
+          <td class="fw-semibold">{{ a.patient_name }}</td>
+          <td>{{ a.therapist_name }}</td>
+          <td class="text-center">{{ a.duration }} 分</td>
+          <td class="text-end">NT$ {{ a.cost | int }}</td>
+          <td class="text-center">
+            {% if a.status == 'completed' %}
+              <span class="badge bg-success">已完成</span>
+            {% elif a.status == 'cancelled' %}
+              <span class="badge bg-secondary">已取消</span>
+            {% else %}
+              <span class="badge bg-warning text-dark">已預約</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-4">當日無預約記錄</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% if appointments %}
+      <tfoot class="table-light fw-bold">
+        <tr>
+          <td colspan="4">合計（已完成）</td>
+          <td class="text-end">NT$ {{ revenue | int }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+
+{% endblock %}

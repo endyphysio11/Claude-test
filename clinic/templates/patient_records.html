@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Patient header -->
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <div>
+    <h5 class="mb-0 fw-bold">
+      <i class="bi bi-file-medical-fill text-success me-2"></i>{{ patient.name }} 的病歷記錄
+    </h5>
+    {% if patient.phone %}<small class="text-muted">{{ patient.phone }}</small>{% endif %}
+  </div>
+  <div class="d-flex gap-2">
+    <a href="/records/new?patient_id={{ patient.id }}" class="btn btn-success">
+      <i class="bi bi-file-earmark-plus me-1"></i>新增病歷
+    </a>
+    <a href="/patients/{{ patient.id }}/edit" class="btn btn-outline-secondary">
+      <i class="bi bi-pencil me-1"></i>編輯個案
+    </a>
+    <a href="/patients" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>返回個案列表
+    </a>
+  </div>
+</div>
+
+{% if not records %}
+<div class="alert alert-info">尚無病歷記錄。</div>
+{% endif %}
+
+{% for r in records %}
+<div class="card shadow-sm mb-3">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span class="fw-semibold">
+      <i class="bi bi-calendar3 me-1 text-primary"></i>{{ r.record_date }}
+      {% if r.therapist_name %}
+        <span class="text-muted ms-2">— {{ r.therapist_name }}</span>
+      {% endif %}
+    </span>
+    <span class="badge bg-danger-subtle text-danger-emphasis rounded-pill">
+      NRS {{ r.pain_score }}/10
+    </span>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+
+      <!-- 主訴症狀 -->
+      {% set symptom_labels = {
+        'symptom_neck':'頸部疼痛','symptom_shoulder':'肩膀疼痛',
+        'symptom_upper_back':'上背部','symptom_lower_back':'下背/腰',
+        'symptom_hip':'髖部','symptom_knee':'膝蓋',
+        'symptom_ankle':'踝部','symptom_wrist':'手腕',
+        'symptom_elbow':'手肘','symptom_headache':'頭痛',
+        'symptom_dizziness':'頭暈','symptom_numbness':'麻木',
+        'symptom_weakness':'肌肉無力','symptom_limited_rom':'活動受限'
+      } %}
+      {% set active_symptoms = [] %}
+      {% for k, v in symptom_labels.items() %}
+        {% if r[k] %}{% set _ = active_symptoms.append(v) %}{% endif %}
+      {% endfor %}
+      {% if active_symptoms %}
+      <div class="col-md-6">
+        <p class="mb-1 fw-semibold small text-muted">主訴症狀</p>
+        <div class="d-flex flex-wrap gap-1">
+          {% for s in active_symptoms %}
+          <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">{{ s }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- 疼痛性質 -->
+      {% set pain_labels = {'pain_sharp':'刺痛','pain_dull':'鈍痛','pain_burning':'灼熱','pain_numb':'麻木'} %}
+      {% set active_pain = [] %}
+      {% for k, v in pain_labels.items() %}
+        {% if r[k] %}{% set _ = active_pain.append(v) %}{% endif %}
+      {% endfor %}
+      {% if active_pain %}
+      <div class="col-md-6">
+        <p class="mb-1 fw-semibold small text-muted">疼痛性質</p>
+        <div class="d-flex flex-wrap gap-1">
+          {% for s in active_pain %}
+          <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle">{{ s }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- 既往病史 -->
+      {% set history_labels = {
+        'history_hypertension':'高血壓','history_diabetes':'糖尿病',
+        'history_heart_disease':'心臟病','history_osteoporosis':'骨質疏鬆',
+        'history_cancer':'癌症','history_surgery':'手術史',
+        'history_fracture':'骨折史','history_pregnancy':'懷孕中'
+      } %}
+      {% set active_history = [] %}
+      {% for k, v in history_labels.items() %}
+        {% if r[k] %}{% set _ = active_history.append(v) %}{% endif %}
+      {% endfor %}
+      {% if active_history %}
+      <div class="col-md-6">
+        <p class="mb-1 fw-semibold small text-muted">既往病史</p>
+        <div class="d-flex flex-wrap gap-1">
+          {% for s in active_history %}
+          <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">{{ s }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- 治療方式 -->
+      {% set treatment_labels = {
+        'treatment_manual':'徒手治療','treatment_ultrasound':'超音波',
+        'treatment_electro':'電療','treatment_heat':'熱敷',
+        'treatment_ice':'冰敷','treatment_exercise':'運動治療',
+        'treatment_traction':'牽引','treatment_taping':'貼紮',
+        'treatment_acupuncture':'針灸','treatment_massage':'深層按摩'
+      } %}
+      {% set active_tx = [] %}
+      {% for k, v in treatment_labels.items() %}
+        {% if r[k] %}{% set _ = active_tx.append(v) %}{% endif %}
+      {% endfor %}
+      {% if active_tx %}
+      <div class="col-md-6">
+        <p class="mb-1 fw-semibold small text-muted">治療方式</p>
+        <div class="d-flex flex-wrap gap-1">
+          {% for s in active_tx %}
+          <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">{{ s }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Assessment / Plan / Notes -->
+      {% if r.assessment %}
+      <div class="col-12">
+        <p class="mb-1 fw-semibold small text-muted">評估</p>
+        <p class="mb-0 text-break">{{ r.assessment }}</p>
+      </div>
+      {% endif %}
+      {% if r.plan %}
+      <div class="col-12">
+        <p class="mb-1 fw-semibold small text-muted">治療計畫</p>
+        <p class="mb-0 text-break">{{ r.plan }}</p>
+      </div>
+      {% endif %}
+      {% if r.therapist_notes %}
+      <div class="col-12">
+        <p class="mb-1 fw-semibold small text-muted">備註</p>
+        <p class="mb-0 text-break fst-italic text-muted">{{ r.therapist_notes }}</p>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}

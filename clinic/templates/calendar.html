@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Date navigation -->
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <a href="/calendar?date={{ prev_date }}" class="btn btn-outline-secondary">
+    <i class="bi bi-chevron-left"></i> 前一天
+  </a>
+
+  <div class="text-center">
+    <h5 class="mb-0 fw-bold">
+      {{ current.strftime('%Y年%m月%d日') }}
+      <span class="badge bg-secondary ms-1">週{{ weekday }}</span>
+    </h5>
+    <small class="text-muted">點擊空白格快速新增預約</small>
+  </div>
+
+  <div class="d-flex gap-2">
+    <a href="/calendar?date={{ next_date }}" class="btn btn-outline-secondary">
+      下一天 <i class="bi bi-chevron-right"></i>
+    </a>
+    <a href="/appointments/new?date={{ current.isoformat() }}" class="btn btn-primary">
+      <i class="bi bi-plus-lg"></i> 新增預約
+    </a>
+  </div>
+</div>
+
+<!-- Schedule grid -->
+<div class="table-responsive shadow-sm rounded">
+  <table class="table table-bordered mb-0 schedule-table">
+    <thead class="table-primary">
+      <tr>
+        <th class="time-header text-center align-middle">時間</th>
+        {% for t in therapists %}
+        <th class="therapist-header text-center align-middle">
+          <i class="bi bi-person-circle me-1"></i>{{ t.name }}
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in grid %}
+        {% set slot = time_slots[loop.index0] %}
+        <tr class="{{ 'hour-row' if ':00' in slot else 'half-row' }}">
+
+          <!-- Time label -->
+          <td class="time-cell text-center align-middle p-0">
+            {% if ':00' in slot %}
+              <span class="fw-bold text-primary">{{ slot }}</span>
+            {% else %}
+              <small class="text-muted">{{ slot }}</small>
+            {% endif %}
+          </td>
+
+          <!-- Therapist columns -->
+          {% for cell in row %}
+            {% set t = therapists[loop.index0] %}
+
+            {% if cell is none %}
+              <!-- empty – clickable to quick-book -->
+              <td class="slot-empty"
+                  onclick="location.href='/appointments/new?date={{ current.isoformat() }}&therapist_id={{ t.id }}&start_time={{ slot }}'">
+              </td>
+
+            {% elif cell.start %}
+              <!-- appointment block -->
+              <td class="slot-booked status-{{ cell.appt.status }}"
+                  rowspan="{{ cell.rowspan }}">
+                <div class="appt-card">
+                  <div class="appt-name fw-bold text-truncate">{{ cell.appt.patient_name }}</div>
+                  <div class="small mt-1 text-muted">
+                    <i class="bi bi-clock me-1"></i>{{ cell.appt.start_time }}
+                    &nbsp;·&nbsp;{{ cell.appt.duration }}分鐘
+                  </div>
+                  <div class="small">
+                    <i class="bi bi-currency-dollar"></i>NT$&nbsp;{{ cell.appt.cost | int }}
+                  </div>
+                  {% if cell.appt.notes %}
+                  <div class="small text-muted fst-italic text-truncate">{{ cell.appt.notes }}</div>
+                  {% endif %}
+
+                  <!-- Action buttons -->
+                  <div class="appt-actions d-flex gap-1 mt-2 flex-wrap">
+                    <a href="/appointments/{{ cell.appt.id }}/edit"
+                       class="btn btn-xs btn-light border"
+                       title="編輯">
+                      <i class="bi bi-pencil-fill"></i>
+                    </a>
+                    {% if cell.appt.status == 'scheduled' %}
+                    <form method="post"
+                          action="/appointments/{{ cell.appt.id }}/complete"
+                          class="d-inline">
+                      <button class="btn btn-xs btn-success" title="標記完成">
+                        <i class="bi bi-check-lg"></i>
+                      </button>
+                    </form>
+                    {% endif %}
+                    <a href="/records/new?patient_id={{ cell.appt.patient_id }}&appointment_id={{ cell.appt.id }}"
+                       class="btn btn-xs btn-info text-white" title="新增病歷">
+                      <i class="bi bi-file-earmark-plus"></i>
+                    </a>
+                    <form method="post"
+                          action="/appointments/{{ cell.appt.id }}/cancel"
+                          class="d-inline"
+                          onsubmit="return confirm('確定取消此預約？')">
+                      <button class="btn btn-xs btn-outline-danger" title="取消預約">
+                        <i class="bi bi-x-lg"></i>
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </td>
+
+            {% endif %}
+            {# cell.start == False → occupied by rowspan, render nothing #}
+
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Legend -->
+<div class="d-flex gap-3 align-items-center mt-3 small flex-wrap">
+  <span class="legend-dot status-scheduled">&#9632;</span> 已預約
+  <span class="legend-dot status-completed">&#9632;</span> 已完成
+  <span class="legend-dot status-cancelled">&#9632;</span> 已取消
+</div>
+
+{% endblock %}

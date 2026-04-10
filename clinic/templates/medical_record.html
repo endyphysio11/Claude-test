@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+    <div class="card shadow-sm">
+      <div class="card-header bg-success text-white">
+        <h5 class="mb-0">
+          <i class="bi bi-file-medical-fill me-2"></i>新增病歷記錄
+        </h5>
+      </div>
+      <div class="card-body">
+        <form method="post">
+          <input type="hidden" name="appointment_id" value="{{ appointment_id }}">
+
+          <!-- ── 基本資訊 ─────────────────────────── -->
+          <h6 class="section-title text-primary border-bottom pb-1 mb-3">
+            <i class="bi bi-info-circle me-1"></i>基本資訊
+          </h6>
+          <div class="row g-3 mb-4">
+            <div class="col-sm-5">
+              <label class="form-label fw-semibold">個案 <span class="text-danger">*</span></label>
+              <select name="patient_id" class="form-select" required>
+                <option value="">— 請選擇 —</option>
+                {% for p in patients %}
+                <option value="{{ p.id }}"
+                  {% if patient_id|string == p.id|string %}selected{% endif %}>
+                  {{ p.name }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">記錄日期 <span class="text-danger">*</span></label>
+              <input type="date" name="record_date" class="form-control" required value="{{ today }}">
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label fw-semibold">治療師</label>
+              <select name="therapist_id" class="form-select">
+                <option value="">—</option>
+                {% for t in therapists %}
+                <option value="{{ t.id }}">{{ t.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <!-- ── 主訴症狀 ─────────────────────────── -->
+          <h6 class="section-title text-primary border-bottom pb-1 mb-3">
+            <i class="bi bi-activity me-1"></i>主訴症狀
+          </h6>
+          <div class="row g-2 mb-4">
+            {% set symptoms = [
+              ('symptom_neck',        '頸部疼痛'),
+              ('symptom_shoulder',    '肩膀疼痛'),
+              ('symptom_upper_back',  '上背部疼痛'),
+              ('symptom_lower_back',  '下背部/腰痛'),
+              ('symptom_hip',         '髖部疼痛'),
+              ('symptom_knee',        '膝蓋疼痛'),
+              ('symptom_ankle',       '踝部疼痛'),
+              ('symptom_wrist',       '手腕疼痛'),
+              ('symptom_elbow',       '手肘疼痛'),
+              ('symptom_headache',    '頭痛'),
+              ('symptom_dizziness',   '頭暈'),
+              ('symptom_numbness',    '麻木/麻痺'),
+              ('symptom_weakness',    '肌肉無力'),
+              ('symptom_limited_rom', '活動範圍受限'),
+            ] %}
+            {% for fname, label in symptoms %}
+            <div class="col-6 col-sm-4 col-md-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox"
+                       name="{{ fname }}" id="{{ fname }}" value="1">
+                <label class="form-check-label" for="{{ fname }}">{{ label }}</label>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <!-- ── 疼痛評估 ─────────────────────────── -->
+          <h6 class="section-title text-primary border-bottom pb-1 mb-3">
+            <i class="bi bi-heart-pulse me-1"></i>疼痛評估
+          </h6>
+          <div class="row g-3 mb-4">
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">
+                疼痛指數 (NRS): <span id="pain_val">0</span> / 10
+              </label>
+              <input type="range" name="pain_score" class="form-range"
+                     min="0" max="10" value="0" id="pain_score"
+                     oninput="document.getElementById('pain_val').textContent = this.value">
+              <div class="d-flex justify-content-between small text-muted">
+                <span>0 無痛</span><span>5 中度</span><span>10 劇痛</span>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">疼痛性質</label>
+              <div class="d-flex gap-3 flex-wrap mt-1">
+                {% for fname, label in [('pain_sharp','刺痛'),('pain_dull','鈍痛'),('pain_burning','灼熱'),('pain_numb','麻木')] %}
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox"
+                         name="{{ fname }}" id="{{ fname }}" value="1">
+                  <label class="form-check-label" for="{{ fname }}">{{ label }}</label>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+
+          <!-- ── 既往病史 ─────────────────────────── -->
+          <h6 class="section-title text-primary border-bottom pb-1 mb-3">
+            <i class="bi bi-clipboard2-pulse me-1"></i>既往病史
+          </h6>
+          <div class="row g-2 mb-4">
+            {% set histories = [
+              ('history_hypertension',  '高血壓'),
+              ('history_diabetes',      '糖尿病'),
+              ('history_heart_disease', '心臟病'),
+              ('history_osteoporosis',  '骨質疏鬆'),
+              ('history_cancer',        '癌症'),
+              ('history_surgery',       '手術史'),
+              ('history_fracture',      '骨折史'),
+              ('history_pregnancy',     '懷孕中'),
+            ] %}
+            {% for fname, label in histories %}
+            <div class="col-6 col-sm-4 col-md-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox"
+                       name="{{ fname }}" id="{{ fname }}" value="1">
+                <label class="form-check-label" for="{{ fname }}">{{ label }}</label>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <!-- ── 治療方式 ─────────────────────────── -->
+          <h6 class="section-title text-primary border-bottom pb-1 mb-3">
+            <i class="bi bi-bandaid me-1"></i>治療方式
+          </h6>
+          <div class="row g-2 mb-4">
+            {% set treatments = [
+              ('treatment_manual',      '徒手治療'),
+              ('treatment_ultrasound',  '超音波'),
+              ('treatment_electro',     '電療 (TENS)'),
+              ('treatment_heat',        '熱敷'),
+              ('treatment_ice',         '冰敷'),
+              ('treatment_exercise',    '運動治療'),
+              ('treatment_traction',    '牽引'),
+              ('treatment_taping',      '貼紮'),
+              ('treatment_acupuncture', '針灸'),
+              ('treatment_massage',     '深層組織按摩'),
+            ] %}
+            {% for fname, label in treatments %}
+            <div class="col-6 col-sm-4 col-md-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox"
+                       name="{{ fname }}" id="{{ fname }}" value="1">
+                <label class="form-check-label" for="{{ fname }}">{{ label }}</label>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <!-- ── 評估與計畫 ───────────────────────── -->
+          <h6 class="section-title text-primary border-bottom pb-1 mb-3">
+            <i class="bi bi-pencil-square me-1"></i>評估與計畫
+          </h6>
+          <div class="row g-3 mb-4">
+            <div class="col-12">
+              <label class="form-label fw-semibold">評估 (Assessment)</label>
+              <textarea name="assessment" class="form-control" rows="3"
+                        placeholder="客觀評估結果…"></textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">治療計畫 (Plan)</label>
+              <textarea name="plan" class="form-control" rows="3"
+                        placeholder="後續治療方向與目標…"></textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">治療師備註</label>
+              <textarea name="therapist_notes" class="form-control" rows="2"
+                        placeholder="其他觀察或說明…"></textarea>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="/patients" class="btn btn-secondary">
+              <i class="bi bi-x-lg me-1"></i>取消
+            </a>
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-check-lg me-1"></i>儲存病歷
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
