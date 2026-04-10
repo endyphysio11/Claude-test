@@ -13,15 +13,52 @@
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-dark site-nav">
+<nav class="navbar navbar-expand-lg navbar-light site-nav">
   <div class="container-fluid px-4">
+
+    <!-- Logo -->
     <a class="navbar-brand" href="/">
-      <span class="brand-en">THE PLATINUM</span>
-      <span class="brand-zh">鉑適物理治療</span>
+      <svg viewBox="0 0 232 44" height="40" xmlns="http://www.w3.org/2000/svg" aria-label="The Platinum 鉑適物理治療">
+        <!-- THE PLATINUM -->
+        <text x="0" y="19"
+              font-family="'Inter','Arial',sans-serif"
+              font-size="17.5" font-weight="700"
+              fill="#1a4f72" letter-spacing="2.2">THE PLATINUM</text>
+        <!-- PHYSICAL THERAPY & WELLNESS CENTER -->
+        <text x="0.5" y="30"
+              font-family="'Inter','Arial',sans-serif"
+              font-size="6.2" font-weight="400"
+              fill="#2e7faa" letter-spacing="3.0">PHYSICAL THERAPY &amp; WELLNESS CENTER</text>
+        <!-- 鉑適物理治療 -->
+        <text x="0.5" y="42"
+              font-family="'Noto Sans TC','Inter','Arial',sans-serif"
+              font-size="9.5" fill="#1a4f72" letter-spacing="9">鉑適物理治療</text>
+        <!-- Knee joint illustration -->
+        <g transform="translate(200, 1)" fill="none" stroke="#9ab8c8"
+           stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <!-- Femoral condyles -->
+          <path d="M16,2 C11,2 7,5 7,10 C7,14.5 9.5,18 13,20
+                   C14,20.5 15,21 16,21 C17,21 18,20.5 19,20
+                   C22.5,18 25,14.5 25,10 C25,5 21,2 16,2 Z"/>
+          <!-- Intercondylar notch -->
+          <path d="M12.5,21 C13.5,24 15,25 16,25 C17,25 18.5,24 19.5,21"/>
+          <!-- Joint line / meniscus level -->
+          <path d="M8,30 C10.5,28.5 13,28 16,28 C19,28 21.5,28.5 24,30"/>
+          <!-- Tibia -->
+          <path d="M8,30 C6.5,34.5 6,39 7,43.5 C8,46.5 10,48 13,48.5
+                   C14,49 15,49.2 16,49.2 C17,49.2 18,49 19,48.5
+                   C22,48 24,46.5 25,43.5 C26,39 25.5,34.5 24,30"/>
+        </g>
+      </svg>
     </a>
-    <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+
+    <!-- Mobile toggler -->
+    <button class="navbar-toggler border-0" type="button"
+            data-bs-toggle="collapse" data-bs-target="#nav"
+            style="color:#456070">
       <span class="navbar-toggler-icon"></span>
     </button>
+
     <div class="collapse navbar-collapse" id="nav">
       <ul class="navbar-nav ms-auto gap-1">
         <li class="nav-item">
@@ -53,7 +90,7 @@
              href="#" data-bs-toggle="dropdown" aria-expanded="false">
             <i class="bi bi-cash-stack me-1"></i>薪資
           </a>
-          <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+          <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="border-radius:12px;border-color:var(--border)">
             <li><a class="dropdown-item" href="/salary"><i class="bi bi-calculator me-1"></i>薪資計算</a></li>
             <li><a class="dropdown-item" href="/therapists/settings"><i class="bi bi-sliders me-1"></i>薪資設定</a></li>
           </ul>
@@ -67,7 +104,7 @@
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
       {% for category, message in messages %}
-        <div class="alert alert-{{ category }} alert-dismissible fade show mb-3 rounded-3" role="alert">
+        <div class="alert alert-{{ category }} alert-dismissible fade show mb-3" role="alert">
           {{ message }}
           <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
