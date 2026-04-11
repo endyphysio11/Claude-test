@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <p class="text-uppercase mb-0" style="font-size:0.68rem;letter-spacing:0.12em;color:var(--gold)">SALARY</p>
+    <h5 class="page-title mb-0">薪資查詢</h5>
+  </div>
+  <a href="/therapists/settings" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-sliders me-1"></i>薪資設定
+  </a>
+</div>
+
+<p class="text-muted mb-4" style="font-size:0.88rem">請選擇要查看薪資的治療師：</p>
+
+{% set colors = {'Endy':'#4a6fa5','Jeffrey':'#4a9070','Diana':'#b8976c','Rex':'#7a5fa0','Alison':'#b85c78'} %}
+<div class="row g-3">
+  {% for t in therapists %}
+  <div class="col-sm-6 col-md-4">
+    <a href="/salary?therapist_id={{ t.id }}" class="text-decoration-none">
+      <div class="card shadow-sm h-100" style="border-left:4px solid {{ colors.get(t.name,'#6b7280') }};transition:all 0.15s">
+        <div class="card-body d-flex align-items-center gap-3 py-3">
+          <span style="width:12px;height:12px;border-radius:50%;background:{{ colors.get(t.name,'#6b7280') }};flex-shrink:0;display:inline-block"></span>
+          <span class="fw-semibold" style="color:var(--dark);font-size:0.95rem">{{ t.name }}</span>
+          <i class="bi bi-chevron-right ms-auto" style="color:var(--text-muted)"></i>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% else %}
+  <div class="col-12 text-center text-muted py-5">尚未設定治療師</div>
+  {% endfor %}
+</div>
+
+{% endblock %}

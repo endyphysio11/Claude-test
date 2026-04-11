@@ -9,10 +9,10 @@
   <div class="d-flex gap-3 align-items-center flex-wrap">
     {% set colors = {'Endy':'#4a6fa5','Jeffrey':'#4a9070','Diana':'#b8976c','Rex':'#7a5fa0','Alison':'#b85c78'} %}
     {% for t in therapists %}
-    <div class="d-flex align-items-center gap-2">
+    <a href="/therapists/{{ t.id }}" class="d-flex align-items-center gap-2 text-decoration-none">
       <span style="width:10px;height:10px;border-radius:2px;background:{{ colors.get(t.name,'#6b7280') }};display:inline-block;flex-shrink:0"></span>
       <span style="font-size:0.82rem;color:var(--text-muted)">{{ t.name }}</span>
-    </div>
+    </a>
     {% endfor %}
   </div>
   <a href="/appointments/new" class="btn btn-sm btn-primary px-3">
@@ -94,25 +94,6 @@
 </div>
 
 <script>
-// ── Therapist schedules from server ───────────────────
-const SCHEDULES = {{ schedules | tojson }};
-
-// Build FullCalendar businessHours array (one entry per therapist)
-const BUSINESS_HOURS = SCHEDULES.map(s => ({
-  daysOfWeek: [1, 2, 3, 4, 5],
-  startTime:  s.start,
-  endTime:    s.end,
-}));
-
-// Scroll to 1 hour before the earliest work start
-const SCROLL_TIME = (() => {
-  const starts = SCHEDULES.map(s => {
-    const [h, m] = s.start.split(':').map(Number);
-    return h * 60 + m;
-  });
-  const earliest = Math.max(0, Math.min(...starts) - 60); // 1h earlier, min 00:00
-  return `${String(Math.floor(earliest / 60)).padStart(2, '0')}:${String(earliest % 60).padStart(2, '0')}:00`;
-})();
 
 const SVC_NAMES = {
   assessment:    '單純評估衛教',
@@ -169,13 +150,11 @@ document.addEventListener('DOMContentLoaded', function () {
     slotMinTime:  '00:00:00',
     slotMaxTime:  '24:00:00',
     slotDuration: '00:30:00',
-    scrollTime:   SCROLL_TIME,
+    scrollTime:   '08:00:00',
     hiddenDays:   [0, 6],
     allDaySlot:   false,
     nowIndicator: true,
-
-    // ── Business hours shade (per therapist) ──────────
-    businessHours: BUSINESS_HOURS,
+    businessHours: false,
 
     // ── Interaction ────────────────────────────────────
     editable:     true,

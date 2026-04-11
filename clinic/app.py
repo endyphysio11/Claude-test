@@ -36,6 +36,14 @@ PACKAGE_TYPES = [
     ('20x2000', '20堂方案', 20, 2000),
 ]
 
+THERAPIST_COLORS = {
+    'Endy':    '#4a6fa5',
+    'Jeffrey': '#4a9070',
+    'Diana':   '#b8976c',
+    'Rex':     '#7a5fa0',
+    'Alison':  '#b85c78',
+}
+
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -238,12 +246,7 @@ def calendar_view():
     conn = get_db()
     therapists = conn.execute("SELECT * FROM therapists ORDER BY id").fetchall()
     conn.close()
-    schedules = [{
-        'name':  t['name'],
-        'start': t['work_start'] or '09:00',
-        'end':   t['work_end']   or '18:00',
-    } for t in therapists]
-    return render_template('calendar.html', therapists=therapists, schedules=schedules)
+    return render_template('calendar.html', therapists=therapists)
 
 
 @app.route('/appointments/api')
@@ -842,10 +845,88 @@ def report():
     )
 
 
+# ─── therapist profiles ──────────────────────────────────────────────────────
+
+@app.route('/therapists/<int:therapist_id>', methods=['GET', 'POST'])
+def therapist_profile(therapist_id):
+    conn = get_db()
+    t = conn.execute("SELECT * FROM therapists WHERE id = ?", (therapist_id,)).fetchone()
+    if not t:
+        conn.close()
+        flash('找不到治療師', 'danger')
+        return redirect(url_for('calendar_view'))
+
+    if request.method == 'POST':
+        work_start = request.form.get('work_start', '09:00')
+        work_end   = request.form.get('work_end',   '18:00')
+        conn.execute(
+            "UPDATE therapists SET work_start=?, work_end=? WHERE id=?",
+            (work_start, work_end, therapist_id)
+        )
+        conn.commit()
+        conn.close()
+        flash('上班時段已更新', 'success')
+        return redirect(url_for('therapist_profile', therapist_id=therapist_id))
+
+    # This month stats
+    today = date.today()
+    month_start = today.replace(day=1)
+    if month_start.month == 12:
+        month_end = month_start.replace(year=month_start.year + 1, month=1, day=1) - timedelta(days=1)
+    else:
+        month_end = month_start.replace(month=month_start.month + 1, day=1) - timedelta(days=1)
+
+    completed = conn.execute("""
+        SELECT a.*, p.name AS patient_name
+        FROM appointments a
+        JOIN patients p ON a.patient_id = p.id
+        WHERE a.therapist_id = ? AND a.date >= ? AND a.date <= ? AND a.status = 'completed'
+        ORDER BY a.date DESC, a.start_time DESC
+    """, (therapist_id, month_start.isoformat(), month_end.isoformat())).fetchall()
+
+    recent = conn.execute("""
+        SELECT a.*, p.name AS patient_name
+        FROM appointments a
+        JOIN patients p ON a.patient_id = p.id
+        WHERE a.therapist_id = ? AND a.status != 'cancelled'
+        ORDER BY a.date DESC, a.start_time DESC
+        LIMIT 10
+    """, (therapist_id,)).fetchall()
+
+    conn.close()
+
+    month_revenue = sum(r['cost'] for r in completed)
+    month_sessions = len(completed)
+
+    return render_template('therapist_profile.html',
+        t=dict(t),
+        color=THERAPIST_COLORS.get(t['name'], '#6b7280'),
+        month_label=f"{today.year}年{today.month}月",
+        month_sessions=month_sessions,
+        month_revenue=month_revenue,
+        recent=recent,
+    )
+
+
 # ─── salary ──────────────────────────────────────────────────────────────────
 
 @app.route('/salary')
 def salary():
+    therapist_id = request.args.get('therapist_id', type=int)
+    conn = get_db()
+    therapists = conn.execute("SELECT * FROM therapists ORDER BY id").fetchall()
+
+    # No therapist selected → show selector
+    if not therapist_id:
+        conn.close()
+        return render_template('salary_select.html', therapists=therapists)
+
+    t = next((x for x in therapists if x['id'] == therapist_id), None)
+    if not t:
+        conn.close()
+        flash('找不到治療師', 'danger')
+        return render_template('salary_select.html', therapists=therapists)
+
     month_str = request.args.get('month', date.today().strftime('%Y-%m'))
     try:
         month_start = datetime.strptime(month_str + '-01', '%Y-%m-%d').date()
@@ -860,46 +941,44 @@ def salary():
     prev_month = (month_start - timedelta(days=1)).strftime('%Y-%m')
     next_month = (month_end  + timedelta(days=1)).strftime('%Y-%m')
 
-    conn = get_db()
-    therapists = conn.execute("SELECT * FROM therapists ORDER BY id").fetchall()
-
-    salary_data = []
-    for t in therapists:
-        completed = conn.execute("""
-            SELECT * FROM appointments
-            WHERE therapist_id = ? AND date >= ? AND date <= ? AND status = 'completed'
-        """, (t['id'], month_start.isoformat(), month_end.isoformat())).fetchall()
-
-        total_revenue = sum(r['cost'] for r in completed)
-        session_count = len(completed)
-        base    = t['base_salary']      or 0
-        c_type  = t['commission_type']  or 'percent'
-        c_value = t['commission_value'] or 0
-
-        if c_type == 'percent':
-            commission = total_revenue * c_value / 100
-        else:  # per_session
-            commission = session_count * c_value
-
-        salary_data.append({
-            'id':               t['id'],
-            'name':             t['name'],
-            'base_salary':      base,
-            'commission_type':  c_type,
-            'commission_value': c_value,
-            'session_count':    session_count,
-            'revenue':          total_revenue,
-            'commission':       commission,
-            'total_salary':     base + commission,
-        })
-
+    completed = conn.execute("""
+        SELECT a.*, p.name AS patient_name
+        FROM appointments a
+        JOIN patients p ON a.patient_id = p.id
+        WHERE a.therapist_id = ? AND a.date >= ? AND a.date <= ? AND a.status = 'completed'
+        ORDER BY a.date, a.start_time
+    """, (t['id'], month_start.isoformat(), month_end.isoformat())).fetchall()
     conn.close()
+
+    total_revenue = sum(r['cost'] for r in completed)
+    session_count = len(completed)
+    base    = t['base_salary']      or 0
+    c_type  = t['commission_type']  or 'percent'
+    c_value = t['commission_value'] or 0
+    commission = (total_revenue * c_value / 100) if c_type == 'percent' else (session_count * c_value)
+
+    salary_data = {
+        'id':               t['id'],
+        'name':             t['name'],
+        'base_salary':      base,
+        'commission_type':  c_type,
+        'commission_value': c_value,
+        'session_count':    session_count,
+        'revenue':          total_revenue,
+        'commission':       commission,
+        'total_salary':     base + commission,
+        'appointments':     [dict(r) for r in completed],
+    }
+
     return render_template('salary.html',
+        t=dict(t),
         month_str=month_str,
         month_start=month_start,
         salary_data=salary_data,
         prev_month=prev_month,
         next_month=next_month,
+        therapist_id=therapist_id,
+        color=THERAPIST_COLORS.get(t['name'], '#6b7280'),
     )
 
 

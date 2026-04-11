@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div class="d-flex align-items-center gap-3">
+    <span style="width:14px;height:36px;border-radius:4px;background:{{ color }};display:inline-block;flex-shrink:0"></span>
+    <div>
+      <p class="text-uppercase mb-0" style="font-size:0.68rem;letter-spacing:0.12em;color:var(--gold)">THERAPIST</p>
+      <h5 class="page-title mb-0">{{ t.name }}</h5>
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="/salary?therapist_id={{ t.id }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-calculator me-1"></i>薪資報表
+    </a>
+    <a href="/calendar" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-calendar3 me-1"></i>行事曆
+    </a>
+  </div>
+</div>
+
+<div class="row g-4">
+
+  <!-- Left column: stats + recent appointments -->
+  <div class="col-lg-7">
+
+    <!-- This month stats -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header gold-header">
+        <p class="text-uppercase mb-0" style="font-size:0.65rem;letter-spacing:0.12em;color:var(--gold)">THIS MONTH</p>
+        <h6 class="mb-0 fw-600">{{ month_label }} 摘要</h6>
+      </div>
+      <div class="card-body">
+        <div class="row g-3 text-center">
+          <div class="col-6">
+            <div class="p-3 rounded" style="background:var(--gold-light)">
+              <div class="fs-3 fw-bold" style="color:var(--brand-dark)">{{ month_sessions }}</div>
+              <div class="small text-muted mt-1">完成診次</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-3 rounded" style="background:var(--gold-light)">
+              <div class="fs-3 fw-bold" style="color:var(--brand-dark)">NT$ {{ month_revenue | int | string | replace('0', '0') }}</div>
+              <div class="small text-muted mt-1">治療收入</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent appointments -->
+    <div class="card shadow-sm">
+      <div class="card-header gold-header">
+        <p class="text-uppercase mb-0" style="font-size:0.65rem;letter-spacing:0.12em;color:var(--gold)">RECENT</p>
+        <h6 class="mb-0 fw-600">最近預約（最新 10 筆）</h6>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size:0.85rem">
+          <thead class="table-light">
+            <tr>
+              <th>日期</th>
+              <th>時間</th>
+              <th>個案</th>
+              <th class="text-end">費用</th>
+              <th class="text-center">狀態</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in recent %}
+            <tr>
+              <td>{{ a.date }}</td>
+              <td>{{ a.start_time }}</td>
+              <td>{{ a.patient_name }}</td>
+              <td class="text-end">NT$ {{ a.cost | int }}</td>
+              <td class="text-center">
+                {% if a.status == 'completed' %}
+                  <span class="badge bg-success-subtle text-success-emphasis">已完成</span>
+                {% elif a.status == 'scheduled' %}
+                  <span class="badge bg-warning-subtle text-warning-emphasis">已預約</span>
+                {% else %}
+                  <span class="badge bg-secondary-subtle text-secondary-emphasis">已取消</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center text-muted py-4">尚無預約紀錄</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right column: settings -->
+  <div class="col-lg-5">
+
+    <!-- Work hours -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header gold-header">
+        <p class="text-uppercase mb-0" style="font-size:0.65rem;letter-spacing:0.12em;color:var(--gold)">SCHEDULE</p>
+        <h6 class="mb-0 fw-600">上班時段設定</h6>
+      </div>
+      <div class="card-body">
+        <form method="post">
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label fw-semibold" style="font-size:0.82rem">
+                <i class="bi bi-clock me-1" style="color:var(--gold)"></i>上班時間
+              </label>
+              <input type="time" name="work_start" class="form-control"
+                     value="{{ t.work_start or '09:00' }}" step="1800">
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold" style="font-size:0.82rem">
+                <i class="bi bi-clock-history me-1" style="color:var(--gold)"></i>下班時間
+              </label>
+              <input type="time" name="work_end" class="form-control"
+                     value="{{ t.work_end or '18:00' }}" step="1800">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary w-100 mt-3">
+            <i class="bi bi-check-lg me-1"></i>儲存時段
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Salary formula (read-only summary) -->
+    <div class="card shadow-sm">
+      <div class="card-header gold-header">
+        <p class="text-uppercase mb-0" style="font-size:0.65rem;letter-spacing:0.12em;color:var(--gold)">SALARY FORMULA</p>
+        <h6 class="mb-0 fw-600">薪資公式</h6>
+      </div>
+      <div class="card-body">
+        <div class="d-flex justify-content-between mb-2">
+          <span class="text-muted small">底薪</span>
+          <span class="fw-semibold">NT$ {{ t.base_salary | int if t.base_salary else 0 }}</span>
+        </div>
+        <div class="d-flex justify-content-between mb-3">
+          <span class="text-muted small">抽成方式</span>
+          <span class="fw-semibold">
+            {% if t.commission_type == 'per_session' %}
+              每診次 NT$ {{ t.commission_value | int if t.commission_value else 0 }}
+            {% else %}
+              {{ t.commission_value if t.commission_value else 0 }}%
+            {% endif %}
+          </span>
+        </div>
+        <div class="p-2 rounded text-center" style="background:var(--gold-light);font-size:0.78rem;color:var(--text-muted)">
+          公式：底薪 NT${{ t.base_salary | int if t.base_salary else 0 }} +
+          {% if t.commission_type == 'per_session' %}
+            診次數 × NT${{ t.commission_value | int if t.commission_value else 0 }}
+          {% else %}
+            治療收入 × {{ t.commission_value if t.commission_value else 0 }}%
+          {% endif %}
+        </div>
+        <a href="/therapists/settings" class="btn btn-sm btn-outline-secondary w-100 mt-3">
+          <i class="bi bi-sliders me-1"></i>修改薪資公式
+        </a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
