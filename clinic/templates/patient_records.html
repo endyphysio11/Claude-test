@@ -5,19 +5,22 @@
 <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
   <div>
     <h5 class="mb-0 fw-bold">
-      <i class="bi bi-file-medical-fill text-success me-2"></i>{{ patient.name }} 的病歷記錄
+      <i class="bi bi-person-lines-fill text-success me-2"></i>{{ patient.name }} 的紀錄
     </h5>
     {% if patient.phone %}<small class="text-muted">{{ patient.phone }}</small>{% endif %}
   </div>
-  <div class="d-flex gap-2">
-    <a href="/records/new?patient_id={{ patient.id }}" class="btn btn-success">
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="/records/new?patient_id={{ patient.id }}" class="btn btn-outline-primary btn-sm">
       <i class="bi bi-file-earmark-plus me-1"></i>新增病歷
     </a>
-    <a href="/patients/{{ patient.id }}/edit" class="btn btn-outline-secondary">
+    <a href="/service-records/new?patient_id={{ patient.id }}" class="btn btn-outline-success btn-sm">
+      <i class="bi bi-activity me-1"></i>新增服務紀錄
+    </a>
+    <a href="/patients/{{ patient.id }}/edit" class="btn btn-outline-secondary btn-sm">
       <i class="bi bi-pencil me-1"></i>編輯個案
     </a>
-    <a href="/patients" class="btn btn-outline-secondary">
-      <i class="bi bi-arrow-left me-1"></i>返回個案列表
+    <a href="/patients" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>返回
     </a>
   </div>
 </div>
@@ -108,8 +111,12 @@
   </div>
 </div>
 
+<!-- ── 病歷紀錄 ── -->
+<h6 class="fw-bold mb-3 mt-2" style="color:var(--dark)">
+  <i class="bi bi-file-earmark-medical me-1 text-primary"></i>病歷紀錄
+</h6>
 {% if not records %}
-<div class="alert alert-info">尚無病歷記錄。</div>
+<div class="alert alert-light border mb-4" style="font-size:0.88rem">尚無病歷記錄。</div>
 {% endif %}
 
 {% for r in records %}
@@ -232,6 +239,124 @@
       <div class="col-12">
         <p class="mb-1 fw-semibold small text-muted">備註</p>
         <p class="mb-0 text-break fst-italic text-muted">{{ r.therapist_notes }}</p>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+<!-- ── 服務紀錄 ── -->
+<h6 class="fw-bold mb-3 mt-4" style="color:var(--dark)">
+  <i class="bi bi-activity me-1 text-success"></i>健康促進服務紀錄
+</h6>
+{% if not service_records %}
+<div class="alert alert-light border mb-4" style="font-size:0.88rem">尚無服務紀錄。</div>
+{% endif %}
+
+{% set svc_labels = {
+  'svc_full_body_massage':'全身按摩','svc_local_massage':'局部按摩',
+  'svc_stretch':'伸展放鬆','svc_joint_mobility':'關節活動度訓練',
+  'svc_fascia_release':'筋膜放鬆','svc_strength':'肌力訓練',
+  'svc_core':'核心訓練','svc_balance':'平衡訓練',
+  'svc_aerobic':'有氧運動','svc_breathing':'呼吸訓練',
+  'svc_posture':'姿勢體態調整','svc_coordination':'協調敏捷訓練'
+} %}
+{% set area_labels = {
+  'area_head_neck':'頭頸部','area_shoulder':'肩膀',
+  'area_upper_back':'上背','area_lower_back':'下背/腰部',
+  'area_hip':'臀部','area_thigh':'大腿','area_knee':'膝關節',
+  'area_calf':'小腿','area_ankle_foot':'踝足部',
+  'area_upper_limb':'上肢','area_full_body':'全身'
+} %}
+{% set goal_labels = {
+  'goal_relaxation':'放鬆減壓','goal_flexibility':'提升柔軟度',
+  'goal_strength':'增強肌力','goal_posture':'改善體態',
+  'goal_performance':'運動表現','goal_general_health':'一般健康維護'
+} %}
+
+{% for r in service_records %}
+<div class="card shadow-sm mb-3">
+  <div class="card-header d-flex align-items-center justify-content-between"
+       style="background:linear-gradient(135deg,#f0faf4,#e8f8ee)">
+    <span class="fw-semibold">
+      <i class="bi bi-calendar3 me-1" style="color:#2d8b55"></i>{{ r.record_date }}
+      {% if r.therapist_name %}
+        <span class="text-muted ms-2">— {{ r.therapist_name }}</span>
+      {% endif %}
+    </span>
+    <div class="d-flex gap-2 align-items-center">
+      <span class="badge" style="background:#e8f8ee;color:#2d8b55;border:1px solid #b6e8c9;font-size:0.75rem">
+        服務前 {{ r.comfort_before }}/10 → 服務後 {{ r.comfort_after }}/10
+      </span>
+      <span class="badge bg-success-subtle text-success-emphasis rounded-pill">服務紀錄</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+
+      {% set active_svcs = [] %}
+      {% for k, v in svc_labels.items() %}
+        {% if r[k] %}{% set _ = active_svcs.append(v) %}{% endif %}
+      {% endfor %}
+      {% if active_svcs %}
+      <div class="col-md-6">
+        <p class="mb-1 fw-semibold small text-muted">服務項目</p>
+        <div class="d-flex flex-wrap gap-1">
+          {% for s in active_svcs %}
+          <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">{{ s }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% set active_areas = [] %}
+      {% for k, v in area_labels.items() %}
+        {% if r[k] %}{% set _ = active_areas.append(v) %}{% endif %}
+      {% endfor %}
+      {% if active_areas %}
+      <div class="col-md-6">
+        <p class="mb-1 fw-semibold small text-muted">服務部位</p>
+        <div class="d-flex flex-wrap gap-1">
+          {% for s in active_areas %}
+          <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">{{ s }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% set active_goals = [] %}
+      {% for k, v in goal_labels.items() %}
+        {% if r[k] %}{% set _ = active_goals.append(v) %}{% endif %}
+      {% endfor %}
+      {% if active_goals %}
+      <div class="col-md-6">
+        <p class="mb-1 fw-semibold small text-muted">服務目標</p>
+        <div class="d-flex flex-wrap gap-1">
+          {% for s in active_goals %}
+          <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle">{{ s }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% if r.content %}
+      <div class="col-12">
+        <p class="mb-1 fw-semibold small text-muted">執行內容</p>
+        <p class="mb-0 text-break">{{ r.content }}</p>
+      </div>
+      {% endif %}
+      {% if r.feedback %}
+      <div class="col-12">
+        <p class="mb-1 fw-semibold small text-muted">客戶反饋</p>
+        <p class="mb-0 text-break fst-italic text-muted">{{ r.feedback }}</p>
+      </div>
+      {% endif %}
+      {% if r.next_plan %}
+      <div class="col-12">
+        <p class="mb-1 fw-semibold small text-muted">建議與下次計畫</p>
+        <p class="mb-0 text-break">{{ r.next_plan }}</p>
       </div>
       {% endif %}
 

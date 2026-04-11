@@ -86,6 +86,48 @@ def init_db():
             referral_source TEXT,
             created_at      TEXT DEFAULT (datetime('now','localtime'))
         );
+        CREATE TABLE IF NOT EXISTS service_records (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_id     INTEGER NOT NULL REFERENCES patients(id),
+            appointment_id INTEGER,
+            record_date    TEXT NOT NULL,
+            therapist_id   INTEGER,
+            svc_full_body_massage  INTEGER DEFAULT 0,
+            svc_local_massage      INTEGER DEFAULT 0,
+            svc_stretch            INTEGER DEFAULT 0,
+            svc_joint_mobility     INTEGER DEFAULT 0,
+            svc_fascia_release     INTEGER DEFAULT 0,
+            svc_strength           INTEGER DEFAULT 0,
+            svc_core               INTEGER DEFAULT 0,
+            svc_balance            INTEGER DEFAULT 0,
+            svc_aerobic            INTEGER DEFAULT 0,
+            svc_breathing          INTEGER DEFAULT 0,
+            svc_posture            INTEGER DEFAULT 0,
+            svc_coordination       INTEGER DEFAULT 0,
+            area_head_neck         INTEGER DEFAULT 0,
+            area_shoulder          INTEGER DEFAULT 0,
+            area_upper_back        INTEGER DEFAULT 0,
+            area_lower_back        INTEGER DEFAULT 0,
+            area_hip               INTEGER DEFAULT 0,
+            area_thigh             INTEGER DEFAULT 0,
+            area_knee              INTEGER DEFAULT 0,
+            area_calf              INTEGER DEFAULT 0,
+            area_ankle_foot        INTEGER DEFAULT 0,
+            area_upper_limb        INTEGER DEFAULT 0,
+            area_full_body         INTEGER DEFAULT 0,
+            goal_relaxation        INTEGER DEFAULT 0,
+            goal_flexibility       INTEGER DEFAULT 0,
+            goal_strength          INTEGER DEFAULT 0,
+            goal_posture           INTEGER DEFAULT 0,
+            goal_performance       INTEGER DEFAULT 0,
+            goal_general_health    INTEGER DEFAULT 0,
+            comfort_before         INTEGER DEFAULT 5,
+            comfort_after          INTEGER DEFAULT 5,
+            content                TEXT,
+            feedback               TEXT,
+            next_plan              TEXT,
+            created_at             TEXT DEFAULT (datetime('now','localtime'))
+        );
         CREATE TABLE IF NOT EXISTS session_packages (
             id                INTEGER PRIMARY KEY AUTOINCREMENT,
             patient_id        INTEGER NOT NULL REFERENCES patients(id),
@@ -631,6 +673,9 @@ def edit_patient(patient_id):
 
 # ─── medical records ─────────────────────────────────────────────────────────
 
+# Service types that map to service record (health promotion), rest → medical record
+SERVICE_RECORD_TYPES = {'exercise', 'space_rental'}
+
 BOOL_FIELDS = [
     'symptom_neck','symptom_shoulder','symptom_upper_back','symptom_lower_back',
     'symptom_hip','symptom_knee','symptom_ankle','symptom_wrist','symptom_elbow',
@@ -643,6 +688,17 @@ BOOL_FIELDS = [
     'treatment_manual','treatment_ultrasound','treatment_electro','treatment_heat',
     'treatment_ice','treatment_exercise','treatment_traction','treatment_taping',
     'treatment_acupuncture','treatment_massage',
+]
+
+SERVICE_RECORD_BOOL_FIELDS = [
+    'svc_full_body_massage','svc_local_massage','svc_stretch','svc_joint_mobility',
+    'svc_fascia_release','svc_strength','svc_core','svc_balance','svc_aerobic',
+    'svc_breathing','svc_posture','svc_coordination',
+    'area_head_neck','area_shoulder','area_upper_back','area_lower_back',
+    'area_hip','area_thigh','area_knee','area_calf','area_ankle_foot',
+    'area_upper_limb','area_full_body',
+    'goal_relaxation','goal_flexibility','goal_strength','goal_posture',
+    'goal_performance','goal_general_health',
 ]
 
 
@@ -703,13 +759,69 @@ def patient_records(patient_id):
         WHERE mr.patient_id = ?
         ORDER BY mr.record_date DESC, mr.id DESC
     """, (patient_id,)).fetchall()
+    service_records = conn.execute("""
+        SELECT sr.*, t.name AS therapist_name
+        FROM service_records sr
+        LEFT JOIN therapists t ON sr.therapist_id = t.id
+        WHERE sr.patient_id = ?
+        ORDER BY sr.record_date DESC, sr.id DESC
+    """, (patient_id,)).fetchall()
     packages = conn.execute("""
         SELECT * FROM session_packages WHERE patient_id = ? ORDER BY created_at DESC
     """, (patient_id,)).fetchall()
     conn.close()
     return render_template('patient_records.html',
-        patient=patient, records=records, packages=packages,
-        package_types=PACKAGE_TYPES, today=date.today().isoformat()
+        patient=patient, records=records, service_records=service_records,
+        packages=packages, package_types=PACKAGE_TYPES, today=date.today().isoformat()
+    )
+
+
+@app.route('/service-records/new', methods=['GET', 'POST'])
+def new_service_record():
+    conn = get_db()
+    patients   = conn.execute("SELECT id, name FROM patients ORDER BY name").fetchall()
+    therapists = conn.execute("SELECT * FROM therapists ORDER BY id").fetchall()
+
+    if request.method == 'POST':
+        f    = request.form
+        vals = {field: (1 if field in f else 0) for field in SERVICE_RECORD_BOOL_FIELDS}
+        cols = ', '.join(SERVICE_RECORD_BOOL_FIELDS)
+        phs  = ', '.join(':' + field for field in SERVICE_RECORD_BOOL_FIELDS)
+        conn.execute(f"""
+            INSERT INTO service_records
+                (patient_id, appointment_id, record_date, therapist_id,
+                 comfort_before, comfort_after, content, feedback, next_plan,
+                 {cols})
+            VALUES
+                (:patient_id, :appointment_id, :record_date, :therapist_id,
+                 :comfort_before, :comfort_after, :content, :feedback, :next_plan,
+                 {phs})
+        """, {
+            'patient_id':     f['patient_id'],
+            'appointment_id': f.get('appointment_id') or None,
+            'record_date':    f['record_date'],
+            'therapist_id':   f.get('therapist_id') or None,
+            'comfort_before': int(f.get('comfort_before', 5)),
+            'comfort_after':  int(f.get('comfort_after', 5)),
+            'content':        f.get('content', ''),
+            'feedback':       f.get('feedback', ''),
+            'next_plan':      f.get('next_plan', ''),
+            **vals,
+        })
+        conn.commit()
+        pid = f['patient_id']
+        conn.close()
+        flash('服務紀錄已新增', 'success')
+        return redirect(url_for('patient_records', patient_id=pid))
+
+    conn.close()
+    return render_template('service_record.html',
+        patients=patients,
+        therapists=therapists,
+        record=None,
+        patient_id=request.args.get('patient_id', ''),
+        appointment_id=request.args.get('appointment_id', ''),
+        today=date.today().isoformat(),
     )
 
 

@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+
+    <div class="card shadow-sm">
+      <div class="card-header gold-header">
+        <p class="text-uppercase mb-0" style="font-size:0.65rem;letter-spacing:0.12em;color:var(--gold)">SERVICE RECORD</p>
+        <h6 class="mb-0 fw-semibold"><i class="bi bi-activity me-1"></i>健康促進服務紀錄</h6>
+      </div>
+      <div class="card-body">
+        <form method="post">
+
+          <!-- 隱藏預約 ID -->
+          {% if appointment_id %}
+          <input type="hidden" name="appointment_id" value="{{ appointment_id }}">
+          {% endif %}
+
+          <!-- 基本資訊 -->
+          <div class="row g-3 mb-4">
+            <div class="col-sm-5">
+              <label class="form-label fw-semibold">服務對象 <span class="text-danger">*</span></label>
+              <select name="patient_id" class="form-select" required>
+                <option value="">— 請選擇 —</option>
+                {% for p in patients %}
+                <option value="{{ p.id }}"
+                  {% if patient_id and patient_id|int == p.id %}selected{% endif %}>
+                  {{ p.name }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">服務人員</label>
+              <select name="therapist_id" class="form-select">
+                <option value="">— 請選擇 —</option>
+                {% for t in therapists %}
+                <option value="{{ t.id }}">{{ t.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label fw-semibold">日期 <span class="text-danger">*</span></label>
+              <input type="date" name="record_date" class="form-control"
+                     value="{{ today }}" required>
+            </div>
+          </div>
+
+          <!-- 服務內容 -->
+          <div class="mb-4">
+            <label class="form-label fw-semibold mb-2">
+              <i class="bi bi-check2-square me-1" style="color:var(--gold)"></i>服務項目
+              <span class="text-muted fw-normal" style="font-size:0.8rem">（可複選）</span>
+            </label>
+            <div class="p-3 rounded" style="background:var(--gold-light)">
+              <div class="mb-2" style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted)">按摩與放鬆</div>
+              <div class="d-flex flex-wrap gap-2 mb-3">
+                {% for val, label in [
+                  ('svc_full_body_massage','全身按摩'),
+                  ('svc_local_massage','局部按摩'),
+                  ('svc_fascia_release','筋膜放鬆（滾筒）'),
+                  ('svc_stretch','伸展放鬆'),
+                ] %}
+                <label class="svc-check-label">
+                  <input type="checkbox" name="{{ val }}" value="1" class="visually-hidden svc-chk">
+                  <span class="svc-chip">{{ label }}</span>
+                </label>
+                {% endfor %}
+              </div>
+              <div class="mb-2" style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted)">活動度與運動</div>
+              <div class="d-flex flex-wrap gap-2 mb-3">
+                {% for val, label in [
+                  ('svc_joint_mobility','關節活動度訓練'),
+                  ('svc_strength','肌力訓練'),
+                  ('svc_core','核心穩定訓練'),
+                  ('svc_balance','平衡訓練'),
+                  ('svc_coordination','協調敏捷訓練'),
+                  ('svc_aerobic','有氧運動'),
+                ] %}
+                <label class="svc-check-label">
+                  <input type="checkbox" name="{{ val }}" value="1" class="visually-hidden svc-chk">
+                  <span class="svc-chip">{{ label }}</span>
+                </label>
+                {% endfor %}
+              </div>
+              <div class="mb-2" style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted)">其他</div>
+              <div class="d-flex flex-wrap gap-2">
+                {% for val, label in [
+                  ('svc_breathing','呼吸訓練'),
+                  ('svc_posture','姿勢與體態調整'),
+                ] %}
+                <label class="svc-check-label">
+                  <input type="checkbox" name="{{ val }}" value="1" class="visually-hidden svc-chk">
+                  <span class="svc-chip">{{ label }}</span>
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+
+          <!-- 身體部位 -->
+          <div class="mb-4">
+            <label class="form-label fw-semibold mb-2">
+              <i class="bi bi-person-bounding-box me-1" style="color:var(--gold)"></i>服務部位
+              <span class="text-muted fw-normal" style="font-size:0.8rem">（可複選）</span>
+            </label>
+            <div class="d-flex flex-wrap gap-2">
+              {% for val, label in [
+                ('area_head_neck','頭頸部'),
+                ('area_shoulder','肩膀'),
+                ('area_upper_back','上背'),
+                ('area_lower_back','下背／腰部'),
+                ('area_hip','臀部'),
+                ('area_thigh','大腿'),
+                ('area_knee','膝關節'),
+                ('area_calf','小腿'),
+                ('area_ankle_foot','踝足部'),
+                ('area_upper_limb','上肢'),
+                ('area_full_body','全身'),
+              ] %}
+              <label class="svc-check-label">
+                <input type="checkbox" name="{{ val }}" value="1" class="visually-hidden svc-chk">
+                <span class="svc-chip">{{ label }}</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- 服務目標 -->
+          <div class="mb-4">
+            <label class="form-label fw-semibold mb-2">
+              <i class="bi bi-bullseye me-1" style="color:var(--gold)"></i>服務目標
+              <span class="text-muted fw-normal" style="font-size:0.8rem">（可複選）</span>
+            </label>
+            <div class="d-flex flex-wrap gap-2">
+              {% for val, label in [
+                ('goal_relaxation','放鬆減壓'),
+                ('goal_flexibility','提升柔軟度'),
+                ('goal_strength','增強肌力'),
+                ('goal_posture','改善體態'),
+                ('goal_performance','運動表現提升'),
+                ('goal_general_health','一般健康維護'),
+              ] %}
+              <label class="svc-check-label">
+                <input type="checkbox" name="{{ val }}" value="1" class="visually-hidden svc-chk">
+                <span class="svc-chip" style="border-color:var(--brand-dark)">{{ label }}</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- 舒適度評估 -->
+          <div class="mb-4">
+            <label class="form-label fw-semibold mb-2">
+              <i class="bi bi-emoji-smile me-1" style="color:var(--gold)"></i>舒適度評估
+            </label>
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <label class="form-label" style="font-size:0.82rem">服務前 (1–10)</label>
+                <div class="d-flex align-items-center gap-3">
+                  <input type="range" name="comfort_before" id="cb_before" class="form-range flex-grow-1"
+                         min="1" max="10" value="5" oninput="document.getElementById('cb_before_val').textContent=this.value">
+                  <span id="cb_before_val" class="fw-bold" style="min-width:1.5rem;text-align:center;color:var(--brand-dark)">5</span>
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" style="font-size:0.82rem">服務後 (1–10)</label>
+                <div class="d-flex align-items-center gap-3">
+                  <input type="range" name="comfort_after" id="cb_after" class="form-range flex-grow-1"
+                         min="1" max="10" value="5" oninput="document.getElementById('cb_after_val').textContent=this.value">
+                  <span id="cb_after_val" class="fw-bold" style="min-width:1.5rem;text-align:center;color:var(--brand-dark)">5</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 執行內容 -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">
+              <i class="bi bi-pencil-square me-1" style="color:var(--gold)"></i>執行內容摘要
+            </label>
+            <textarea name="content" class="form-control" rows="3"
+                      placeholder="本次服務的主要內容、技術或手法…"></textarea>
+          </div>
+
+          <!-- 客戶反饋 -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">
+              <i class="bi bi-chat-quote me-1" style="color:var(--gold)"></i>客戶反饋
+            </label>
+            <textarea name="feedback" class="form-control" rows="2"
+                      placeholder="客戶的感受與反應…"></textarea>
+          </div>
+
+          <!-- 下次計畫 -->
+          <div class="mb-4">
+            <label class="form-label fw-semibold">
+              <i class="bi bi-arrow-right-circle me-1" style="color:var(--gold)"></i>建議與下次計畫
+            </label>
+            <textarea name="next_plan" class="form-control" rows="2"
+                      placeholder="後續建議、注意事項、下次服務方向…"></textarea>
+          </div>
+
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="javascript:history.back()" class="btn btn-outline-secondary">
+              <i class="bi bi-x-lg me-1"></i>取消
+            </a>
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="bi bi-check-lg me-1"></i>儲存紀錄
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+.svc-chip {
+  display: inline-block;
+  padding: 0.3rem 0.75rem;
+  border-radius: 50px;
+  border: 1.5px solid var(--border);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: #fff;
+  color: var(--dark);
+  user-select: none;
+}
+.svc-chip:hover { border-color: var(--gold); background: var(--gold-light); }
+.svc-chk:checked + .svc-chip {
+  border-color: var(--brand-dark);
+  background: var(--gold-light);
+  color: var(--brand-dark);
+  font-weight: 600;
+}
+</style>
+
+{% endblock %}

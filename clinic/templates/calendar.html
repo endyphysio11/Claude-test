@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function () {
     slotMinTime:  '00:00:00',
     slotMaxTime:  '24:00:00',
     slotDuration: '00:30:00',
-    scrollTime:   '08:00:00',
+    scrollTime:   '09:00:00',
     hiddenDays:   [0, 6],
     allDaySlot:   false,
     nowIndicator: true,
@@ -218,9 +218,19 @@ document.addEventListener('DOMContentLoaded', function () {
       hdr.style.color = '#fff';
 
       const id = ev.id;
-      document.getElementById('modal-edit-btn').href        = `/appointments/${id}/edit`;
-      document.getElementById('modal-record-btn').href      = `/records/new?patient_id=${p.patient_id}&appointment_id=${id}`;
-      document.getElementById('modal-checkout-btn').href    = `/appointments/${id}/checkout`;
+      document.getElementById('modal-edit-btn').href     = `/appointments/${id}/edit`;
+      document.getElementById('modal-checkout-btn').href = `/appointments/${id}/checkout`;
+
+      // Route record button based on service type
+      const SERVICE_RECORD_TYPES = new Set(['exercise', 'space_rental']);
+      const recordBtn = document.getElementById('modal-record-btn');
+      if (SERVICE_RECORD_TYPES.has(p.service_type)) {
+        recordBtn.href = `/service-records/new?patient_id=${p.patient_id}&appointment_id=${id}`;
+        recordBtn.innerHTML = '<i class="bi bi-activity me-1"></i>服務紀錄';
+      } else {
+        recordBtn.href = `/records/new?patient_id=${p.patient_id}&appointment_id=${id}`;
+        recordBtn.innerHTML = '<i class="bi bi-file-earmark-plus me-1"></i>病歷';
+      }
       document.getElementById('modal-cancel-form').action   = `/appointments/${id}/cancel`;
       // 結帳：取消的不顯示；已付款的顯示灰色
       const checkoutBtn = document.getElementById('modal-checkout-btn');
