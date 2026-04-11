@@ -291,29 +291,39 @@ document.addEventListener('DOMContentLoaded', function () {
 
   calendar.render();
 
-  // ── Now indicator: force inline styles so FullCalendar's runtime CSS can't win ──
+  // ── Now indicator: thin line spanning ALL day columns ──
   function styleNowIndicator() {
     const line = document.querySelector('.fc-timegrid-now-indicator-line');
     if (line) {
-      line.style.setProperty('border-top',       '3px solid #e8453c', 'important');
-      line.style.setProperty('border-top-width', '3px',               'important');
-      line.style.setProperty('border-top-style', 'solid',             'important');
-      line.style.setProperty('border-top-color', '#e8453c',           'important');
-      line.style.setProperty('opacity',          '1',                 'important');
-      line.style.setProperty('visibility',       'visible',           'important');
-      line.style.setProperty('z-index',          '9999',              'important');
-      line.style.setProperty('left',             '0',                 'important');
-      line.style.setProperty('right',            '0',                 'important');
+      // Extend line to cover every day column, not just today's
+      const allCols = document.querySelectorAll('.fc-timegrid-col[data-date]');
+      if (allCols.length > 1) {
+        const firstRect = allCols[0].getBoundingClientRect();
+        const lastRect  = allCols[allCols.length - 1].getBoundingClientRect();
+        const lineRect  = line.getBoundingClientRect();
+        const offsetLeft = firstRect.left - lineRect.left;   // negative: go left
+        const totalWidth = lastRect.right - firstRect.left;
+        line.style.setProperty('left',  `${offsetLeft}px`,  'important');
+        line.style.setProperty('width', `${totalWidth}px`,  'important');
+        line.style.setProperty('right', 'auto',             'important');
+      }
+      line.style.setProperty('border-top',       '1.5px solid #e8453c', 'important');
+      line.style.setProperty('border-top-width', '1.5px',               'important');
+      line.style.setProperty('border-top-style', 'solid',               'important');
+      line.style.setProperty('border-top-color', '#e8453c',             'important');
+      line.style.setProperty('opacity',          '1',                   'important');
+      line.style.setProperty('visibility',       'visible',             'important');
+      line.style.setProperty('z-index',          '9999',                'important');
     }
     const arrow = document.querySelector('.fc-timegrid-now-indicator-arrow');
     if (arrow) {
-      arrow.style.setProperty('background-color', '#e8453c',     'important');
-      arrow.style.setProperty('border-radius',    '50%',         'important');
-      arrow.style.setProperty('width',            '12px',        'important');
-      arrow.style.setProperty('height',           '12px',        'important');
-      arrow.style.setProperty('border',           'none',        'important');
-      arrow.style.setProperty('margin-top',       '-5px',        'important');
-      arrow.style.setProperty('margin-left',      '-4px',        'important');
+      arrow.style.setProperty('background-color', '#e8453c', 'important');
+      arrow.style.setProperty('border-radius',    '50%',     'important');
+      arrow.style.setProperty('width',            '10px',    'important');
+      arrow.style.setProperty('height',           '10px',    'important');
+      arrow.style.setProperty('border',           'none',    'important');
+      arrow.style.setProperty('margin-top',       '-4px',    'important');
+      arrow.style.setProperty('margin-left',      '-3px',    'important');
     }
   }
 
