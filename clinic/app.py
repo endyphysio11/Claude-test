@@ -702,6 +702,52 @@ SERVICE_RECORD_BOOL_FIELDS = [
 ]
 
 
+@app.route('/records')
+def records_hub():
+    q = request.args.get('q', '').strip()
+    conn = get_db()
+
+    total_medical  = conn.execute("SELECT COUNT(*) FROM medical_records").fetchone()[0]
+    total_service  = conn.execute("SELECT COUNT(*) FROM service_records").fetchone()[0]
+    total_patients = conn.execute("""
+        SELECT COUNT(DISTINCT patient_id) FROM (
+            SELECT patient_id FROM medical_records
+            UNION ALL
+            SELECT patient_id FROM service_records
+        )
+    """).fetchone()[0]
+
+    results = []
+    if q:
+        like = f'%{q}%'
+        patients = conn.execute(
+            "SELECT * FROM patients WHERE name LIKE ? ORDER BY name", (like,)
+        ).fetchall()
+        for p in patients:
+            medical = conn.execute("""
+                SELECT mr.*, t.name AS therapist_name
+                FROM medical_records mr
+                LEFT JOIN therapists t ON mr.therapist_id = t.id
+                WHERE mr.patient_id = ? ORDER BY mr.record_date DESC
+            """, (p['id'],)).fetchall()
+            service = conn.execute("""
+                SELECT sr.*, t.name AS therapist_name
+                FROM service_records sr
+                LEFT JOIN therapists t ON sr.therapist_id = t.id
+                WHERE sr.patient_id = ? ORDER BY sr.record_date DESC
+            """, (p['id'],)).fetchall()
+            results.append({'patient': dict(p), 'medical': medical, 'service': service})
+
+    conn.close()
+    return render_template('records_hub.html',
+        q=q,
+        total_medical=total_medical,
+        total_service=total_service,
+        total_patients=total_patients,
+        results=results,
+    )
+
+
 @app.route('/records/new', methods=['GET', 'POST'])
 def new_record():
     conn = get_db()

@@ -221,15 +221,14 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('modal-edit-btn').href     = `/appointments/${id}/edit`;
       document.getElementById('modal-checkout-btn').href = `/appointments/${id}/checkout`;
 
-      // Route record button based on service type
+      // Record button always shows 服務紀錄; routes by service type
       const SERVICE_RECORD_TYPES = new Set(['exercise', 'space_rental']);
       const recordBtn = document.getElementById('modal-record-btn');
+      recordBtn.innerHTML = '<i class="bi bi-journal-text me-1"></i>服務紀錄';
       if (SERVICE_RECORD_TYPES.has(p.service_type)) {
         recordBtn.href = `/service-records/new?patient_id=${p.patient_id}&appointment_id=${id}`;
-        recordBtn.innerHTML = '<i class="bi bi-activity me-1"></i>服務紀錄';
       } else {
         recordBtn.href = `/records/new?patient_id=${p.patient_id}&appointment_id=${id}`;
-        recordBtn.innerHTML = '<i class="bi bi-file-earmark-plus me-1"></i>病歷';
       }
       document.getElementById('modal-cancel-form').action   = `/appointments/${id}/cancel`;
       // 結帳：取消的不顯示；已付款的顯示灰色
