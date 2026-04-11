@@ -12,6 +12,7 @@
       </div>
       <div class="card-body">
 
+        <!-- Patient info (read-only) -->
         <div class="p-3 rounded mb-3" style="background:var(--gold-light)">
           <div class="row g-2">
             <div class="col-6">
@@ -33,20 +34,24 @@
           </div>
         </div>
 
+        <!-- Treatment type checkboxes -->
         <div class="mb-3">
-          <label class="form-label fw-semibold mb-2">勾選費用項目</label>
-          <div id="fee-items"></div>
-          <button type="button" class="btn btn-sm btn-outline-secondary mt-2"
-                  onclick="addCustomItem()">
-            <i class="bi bi-plus-circle me-1"></i>新增其他項目
-          </button>
+          <label class="form-label fw-semibold mb-2">勾選治療項目</label>
+          <div id="treat-items" class="row g-0"></div>
         </div>
 
         <hr class="my-3">
 
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <span class="fw-semibold">合計金額</span>
-          <span id="setup-total" class="fw-bold fs-5" style="color:var(--brand-dark)">NT$ 0</span>
+        <!-- Total amount (editable) -->
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Total Payment NTD</label>
+          <div class="input-group">
+            <span class="input-group-text" style="border-radius:50px 0 0 50px">NT$</span>
+            <input type="number" id="total-input" class="form-control" min="0"
+                   value="{{ appt.cost | int }}"
+                   oninput="updateTotal(this.value)"
+                   style="border-radius:0 50px 50px 0">
+          </div>
         </div>
 
         <button onclick="window.print()" class="btn btn-primary w-100">
@@ -86,22 +91,24 @@
 
         <div class="r-hline r-hline-thick"></div>
 
-        <!-- Patient name + ROC date -->
+        <!-- Patient name + ROC date + notes -->
         <div class="r-infobar">
           <div>
             姓名 Name：<span class="r-uline">{{ appt.patient_name }}</span>
           </div>
           <div class="r-datecell">
-            {{ roc_year }}&thinsp;年&emsp;
-            {{ appt.date[5:7] | int }}&thinsp;月&emsp;
-            {{ appt.date[8:10] | int }}&thinsp;日
-            （<span id="r-wday"></span>）
+            年(Y)&thinsp;<span class="r-uline-sm">{{ roc_year }}</span>&emsp;
+            月(M)&thinsp;<span class="r-uline-sm">{{ appt.date[5:7] | int }}</span>&emsp;
+            日(D)&thinsp;<span class="r-uline-sm">{{ appt.date[8:10] | int }}</span>
           </div>
+        </div>
+        <div class="r-notebar">
+          備註：<span class="r-uline-long" id="r-notes"></span>
         </div>
 
         <div class="r-hline"></div>
 
-        <!-- Two-column fee items -->
+        <!-- Two-column treatment items -->
         <div class="r-items-wrap">
           <div class="r-items-col" id="r-col-l"></div>
           <div class="r-vline"></div>
@@ -114,7 +121,7 @@
         <div class="r-ftr">
           <div class="r-ftr-total">
             Total Payment NTD&ensp;
-            <span class="r-total-val" id="r-total">0</span>
+            <span class="r-total-val" id="r-total">{{ appt.cost | int }}</span>
             &ensp;元整
           </div>
           <div class="r-ftr-pt">
@@ -133,28 +140,18 @@
 <!-- ── Styles ─────────────────────────────────────── -->
 <style>
 /* Setup panel */
-.fee-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 5px 0; border-bottom: 1px solid var(--border);
+.treat-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 0; font-size: 0.83rem;
 }
-.fee-row:last-child { border-bottom: none; }
-.fee-check { width: 16px; height: 16px; accent-color: var(--brand-dark); cursor: pointer; flex-shrink: 0; }
-.fee-name  { flex: 1; font-size: 0.84rem; }
-.fee-amt   {
-  width: 90px; font-size: 0.84rem;
-  border: 1px solid var(--border); border-radius: 8px !important;
-  padding: 3px 8px; text-align: right; background: #fff;
-}
-.fee-amt:focus { outline: none; border-color: var(--gold-mid); }
-.fee-del   { background: none; border: none; color: #ccc; cursor: pointer; font-size: 0.9rem; padding: 0 2px; }
-.fee-del:hover { color: #e55; }
+.treat-check { width: 15px; height: 15px; accent-color: var(--brand-dark); cursor: pointer; flex-shrink: 0; }
 
 /* Receipt paper — landscape proportions */
 .receipt-paper {
   display: flex;
   width: 100%;
   max-width: 760px;
-  min-height: 390px;
+  min-height: 400px;
   background: #fff;
   border: 1.5px solid #888;
   font-family: 'Noto Serif TC', 'Times New Roman', serif;
@@ -227,15 +224,20 @@
 /* Dividers */
 .r-hline { border: none; border-top: 1px solid #888; margin: 0; }
 .r-hline.r-hline-thick { border-top: 2.5px double #333; }
-.r-vline { width: 1px; background: #999; flex-shrink: 0; margin: 0 2px; }
+.r-vline { width: 1px; background: #999; flex-shrink: 0; }
 
 /* Info bar */
 .r-infobar {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  padding: 5px 14px;
-  font-size: 0.82rem;
+  padding: 4px 14px 2px;
+  font-size: 0.81rem;
+}
+.r-notebar {
+  padding: 2px 14px 4px;
+  font-size: 0.78rem;
+  color: #444;
 }
 .r-uline {
   border-bottom: 1px solid #333;
@@ -244,53 +246,60 @@
   display: inline-block;
   font-weight: 600;
 }
-.r-datecell { font-size: 0.82rem; white-space: nowrap; }
+.r-uline-sm {
+  border-bottom: 1px solid #333;
+  padding-bottom: 1px;
+  min-width: 28px;
+  display: inline-block;
+  text-align: center;
+  font-weight: 600;
+}
+.r-uline-long {
+  border-bottom: 1px solid #aaa;
+  padding-bottom: 1px;
+  min-width: 200px;
+  display: inline-block;
+}
+.r-datecell { font-size: 0.78rem; white-space: nowrap; }
 
 /* Items area */
 .r-items-wrap {
   display: flex;
   flex: 1;
-  padding: 3px 0;
-  min-height: 160px;
+  padding: 2px 0;
+  min-height: 170px;
 }
 .r-items-col {
   flex: 1;
-  padding: 4px 12px;
+  padding: 3px 10px;
   display: flex;
   flex-direction: column;
-  gap: 0;
+  justify-content: space-around;
 }
 .r-item-row {
   display: flex;
   align-items: baseline;
-  gap: 5px;
-  padding: 4px 0;
-  border-bottom: 1px dotted #ccc;
-  font-size: 0.77rem;
-  min-height: 28px;
+  gap: 4px;
+  padding: 3px 0;
+  font-size: 0.76rem;
+  border-bottom: 1px dotted #ddd;
 }
 .r-item-row:last-child { border-bottom: none; }
 .r-item-mark { width: 13px; flex-shrink: 0; text-align: center; font-weight: 700; }
 .r-item-mark-on  { color: #c0392b; }
 .r-item-mark-off { color: #aaa; }
-.r-item-name { flex: 1; }
-.r-item-name-en { font-size: 0.65em; color: #777; margin-left: 3px; font-family: 'Inter', sans-serif; }
-.r-item-amt     { min-width: 64px; text-align: right; font-weight: 600; font-family: 'Courier New', monospace; font-size: 0.8rem; }
-.r-item-amt-off { color: #ccc; }
+.r-item-name-zh  { font-weight: 500; }
+.r-item-name-en  { font-size: 0.65em; color: #666; margin-left: 4px; font-family: 'Inter', sans-serif; }
 
 /* Footer */
 .r-ftr {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 14px 10px;
+  padding: 5px 14px 8px;
   gap: 8px;
 }
-.r-ftr-total {
-  font-size: 0.86rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
+.r-ftr-total { font-size: 0.86rem; font-weight: 600; white-space: nowrap; }
 .r-total-val {
   font-size: 1.1rem;
   font-weight: 900;
@@ -318,10 +327,7 @@
   .navbar, .breadcrumb, #flash-messages { display: none !important; }
   body, html { padding: 0 !important; margin: 0 !important; background: #fff !important; }
   .container-fluid, .main-content, .row, .g-4,
-  .col-xl-8, .col-lg-7 {
-    all: unset;
-    display: block;
-  }
+  .col-xl-8, .col-lg-7 { all: unset; display: block; }
   .receipt-paper {
     box-shadow: none !important;
     border: 1px solid #888 !important;
@@ -329,7 +335,7 @@
     height: 138mm !important;
     max-width: 200mm !important;
     margin: 0 auto !important;
-    font-size: 0.75rem !important;
+    font-size: 0.73rem !important;
   }
   @page { size: A5 landscape; margin: 5mm; }
 }
@@ -337,94 +343,74 @@
 
 <!-- ── Script ──────────────────────────────────────── -->
 <script>
-const APPT_DATE = '{{ appt.date }}';
 const APPT_COST = {{ appt.cost | int }};
 
-// Default fee items
-let feeState = [
-  { name: '掛號費',    en: 'Registration Fee',      amt: 150,       preset: 150,       checked: false },
-  { name: '診察費',    en: 'Consultation Fee',       amt: 500,       preset: 500,       checked: false },
-  { name: '物理治療費', en: 'Physical Therapy Fee',  amt: APPT_COST, preset: APPT_COST, checked: true  },
-  { name: '運動訓練費', en: 'Exercise Training Fee', amt: 0,         preset: 0,         checked: false },
-  { name: '儀器治療費', en: 'Equipment Therapy Fee', amt: 0,         preset: 0,         checked: false },
-  { name: '衛教費',    en: 'Health Education Fee',  amt: 0,         preset: 0,         checked: false },
-  { name: '處置費',    en: 'Treatment Fee',          amt: 0,         preset: 0,         checked: false },
-  { name: '其他',      en: 'Others',                amt: 0,         preset: 0,         checked: false, custom: true },
+// All treatment items from the physical receipt form
+// Left column: indices 0–6, Right column: indices 7–13
+const TREAT_ITEMS = [
+  // Left column
+  { zh: '治療項目',    en: 'Physical Therapy Evaluation', checked: false },
+  { zh: '肌力訓練',    en: 'Strengthening Training',      checked: false },
+  { zh: '耐力訓練',    en: 'Endurance Training',          checked: false },
+  { zh: '按摩',        en: 'Massage',                     checked: false },
+  { zh: '平衡訓練',    en: 'Balance Training',            checked: false },
+  { zh: '步態訓練',    en: 'Ambulation Training',         checked: false },
+  // Right column
+  { zh: '促進技術',    en: 'Facilitation Techniques',     checked: false },
+  { zh: '伸展訓練',    en: 'Stretching Exercise',         checked: false },
+  { zh: '被動訓練',    en: 'Passive Training',            checked: false },
+  { zh: '心肺功能訓練', en: 'Cardiopulmonary Training',   checked: false },
+  { zh: '治療性運動',  en: 'Therapeutic Exercise',        checked: false },
+  { zh: '被動關節角度', en: 'Passive R.O.M.',             checked: false },
+  { zh: '聚焦衝擊波',  en: 'Focused ESWT',               checked: false },
 ];
 
-// Weekday label
-(function () {
-  const d = new Date(APPT_DATE + 'T00:00:00');
-  const days = ['日','一','二','三','四','五','六'];
-  const el = document.getElementById('r-wday');
-  if (el) el.textContent = '週' + days[d.getDay()];
-})();
+let totalAmt = APPT_COST;
 
+// Render setup panel checkboxes (2 per row using Bootstrap grid)
 function renderSetup() {
-  const el = document.getElementById('fee-items');
+  const el = document.getElementById('treat-items');
   el.innerHTML = '';
-  feeState.forEach((item, idx) => {
-    const row = document.createElement('div');
-    row.className = 'fee-row';
-    row.innerHTML = `
-      <input type="checkbox" class="fee-check" ${item.checked ? 'checked' : ''}
-             onchange="toggleItem(${idx}, this.checked)">
-      <span class="fee-name">${item.name}</span>
-      <input type="number" class="fee-amt" min="0"
-             value="${item.checked ? item.amt : ''}"
-             placeholder="金額" ${!item.checked ? 'disabled' : ''}
-             oninput="setAmt(${idx}, this.value)">
-      ${item.custom
-        ? `<button class="fee-del" onclick="removeItem(${idx})" title="刪除">✕</button>`
-        : '<span style="width:18px"></span>'}
+  TREAT_ITEMS.forEach((item, idx) => {
+    const col = document.createElement('div');
+    col.className = 'col-6';
+    col.innerHTML = `
+      <div class="treat-row">
+        <input type="checkbox" class="treat-check" id="tc${idx}"
+               ${item.checked ? 'checked' : ''}
+               onchange="toggleTreat(${idx}, this.checked)">
+        <label for="tc${idx}" style="cursor:pointer;margin:0">
+          <span style="font-size:0.83rem">${item.zh}</span>
+          <span style="font-size:0.68rem;color:#888;display:block;line-height:1.1">${item.en}</span>
+        </label>
+      </div>
     `;
-    el.appendChild(row);
+    el.appendChild(col);
   });
   renderReceipt();
 }
 
-function toggleItem(idx, checked) {
-  feeState[idx].checked = checked;
-  if (checked && feeState[idx].amt === 0 && feeState[idx].preset) {
-    feeState[idx].amt = feeState[idx].preset;
-  }
-  renderSetup();
-}
-
-function setAmt(idx, val) {
-  feeState[idx].amt = parseInt(val) || 0;
+function toggleTreat(idx, checked) {
+  TREAT_ITEMS[idx].checked = checked;
   renderReceipt();
 }
 
-function removeItem(idx) {
-  feeState.splice(idx, 1);
-  renderSetup();
-}
-
-let customCount = 0;
-function addCustomItem() {
-  customCount++;
-  feeState.push({
-    name: '其他項目 ' + customCount, en: 'Other ' + customCount,
-    checked: true, amt: 0, preset: 0, custom: true,
-  });
-  renderSetup();
+function updateTotal(val) {
+  totalAmt = parseInt(val) || 0;
+  document.getElementById('r-total').textContent = totalAmt.toLocaleString();
 }
 
 function renderReceipt() {
-  const half = Math.ceil(feeState.length / 2);
-  const left  = feeState.slice(0, half);
-  const right = feeState.slice(half);
+  const left  = TREAT_ITEMS.slice(0, 6);
+  const right = TREAT_ITEMS.slice(6);
 
   function buildRows(items) {
     return items.map(item => `
       <div class="r-item-row">
         <span class="r-item-mark ${item.checked ? 'r-item-mark-on' : 'r-item-mark-off'}">${item.checked ? '✓' : '□'}</span>
-        <span class="r-item-name">
-          ${item.name}<span class="r-item-name-en">${item.en}</span>
-        </span>
-        <span class="r-item-amt ${item.checked ? '' : 'r-item-amt-off'}">
-          ${item.checked ? 'NT$\u202F' + item.amt.toLocaleString() : '—'}
+        <span>
+          <span class="r-item-name-zh">${item.zh}</span>
+          <span class="r-item-name-en">${item.en}</span>
         </span>
       </div>
     `).join('');
@@ -432,10 +418,6 @@ function renderReceipt() {
 
   document.getElementById('r-col-l').innerHTML = buildRows(left);
   document.getElementById('r-col-r').innerHTML = buildRows(right);
-
-  const total = feeState.filter(f => f.checked).reduce((s, f) => s + f.amt, 0);
-  document.getElementById('r-total').textContent = total.toLocaleString();
-  document.getElementById('setup-total').textContent = 'NT$ ' + total.toLocaleString();
 }
 
 renderSetup();
