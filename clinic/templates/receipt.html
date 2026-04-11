@@ -83,7 +83,7 @@
         <!-- Top: address left, receipt number right -->
         <div class="r-top">
           <div class="r-addr">
-            台北市大安區安和路一段 79 號&emsp;&emsp;統一編號：00111969<br>
+            台北市大安區安和路一段 79 號<br>
             電話：(02)&thinsp;2758-3285
           </div>
           <div class="r-no">{{ '%06d' % appt.id }}</div>
@@ -117,17 +117,22 @@
 
         <div class="r-hline"></div>
 
-        <!-- Footer: total + therapist -->
+        <!-- Footer: total + therapist + stamp -->
         <div class="r-ftr">
           <div class="r-ftr-total">
             Total Payment NTD&ensp;
             <span class="r-total-val" id="r-total">{{ appt.cost | int }}</span>
             &ensp;元整
           </div>
-          <div class="r-ftr-pt">
-            <div>物理治療師</div>
-            <div class="r-ftr-pt-en">Physical Therapist</div>
-            <div class="r-ftr-pt-name">{{ appt.therapist_name }}</div>
+          <div class="r-ftr-right">
+            <div class="r-ftr-pt">
+              <div>物理治療師</div>
+              <div class="r-ftr-pt-en">Physical Therapist</div>
+              <div class="r-ftr-pt-name">{{ appt.therapist_name }}</div>
+            </div>
+            <div class="r-stamp-box">
+              <div class="r-stamp-label">章</div>
+            </div>
           </div>
         </div>
 
@@ -311,15 +316,34 @@
   text-align: right;
   padding-bottom: 1px;
 }
+.r-ftr-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-left: 1px solid #aaa;
+  padding-left: 12px;
+}
 .r-ftr-pt {
   text-align: center;
   font-size: 0.74rem;
-  border-left: 1px solid #aaa;
-  padding-left: 12px;
-  min-width: 90px;
 }
 .r-ftr-pt-en   { font-size: 0.62rem; color: #666; font-family: 'Inter', sans-serif; }
 .r-ftr-pt-name { font-weight: 700; color: #1a4f72; margin-top: 3px; font-size: 0.8rem; }
+.r-stamp-box {
+  width: 62px;
+  height: 62px;
+  border: 1.5px dashed #bbb;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.r-stamp-label {
+  font-size: 0.7rem;
+  color: #ccc;
+  letter-spacing: 0.05em;
+}
 
 /* Print */
 @media print {
