@@ -868,43 +868,114 @@ def therapist_profile(therapist_id):
         flash('上班時段已更新', 'success')
         return redirect(url_for('therapist_profile', therapist_id=therapist_id))
 
-    # This month stats
-    today = date.today()
-    month_start = today.replace(day=1)
-    if month_start.month == 12:
-        month_end = month_start.replace(year=month_start.year + 1, month=1, day=1) - timedelta(days=1)
-    else:
-        month_end = month_start.replace(month=month_start.month + 1, day=1) - timedelta(days=1)
+    # ── Period / date handling (same logic as report route) ──
+    period   = request.args.get('period', 'month')
+    if period not in ('day', 'week', 'month', 'year'):
+        period = 'month'
+    date_str = request.args.get('date', date.today().isoformat())
+    try:
+        anchor = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        anchor = date.today()
 
-    completed = conn.execute("""
+    if period == 'week':
+        week_start   = anchor - timedelta(days=anchor.weekday())
+        week_end     = week_start + timedelta(days=4)
+        date_from    = week_start
+        date_to      = week_end
+        prev_anchor  = (week_start - timedelta(days=7)).isoformat()
+        next_anchor  = (week_start + timedelta(days=7)).isoformat()
+        period_label = (f"{week_start.year}年 "
+                        f"{week_start.month}月{week_start.day}日"
+                        f" – {week_end.month}月{week_end.day}日")
+    elif period == 'month':
+        month_start  = anchor.replace(day=1)
+        if month_start.month == 12:
+            month_end = month_start.replace(year=month_start.year + 1, month=1, day=1) - timedelta(days=1)
+        else:
+            month_end = month_start.replace(month=month_start.month + 1, day=1) - timedelta(days=1)
+        date_from    = month_start
+        date_to      = month_end
+        prev_anchor  = (month_start - timedelta(days=1)).replace(day=1).isoformat()
+        next_anchor  = (month_end + timedelta(days=1)).isoformat()
+        period_label = f"{anchor.year}年{anchor.month}月"
+    elif period == 'year':
+        date_from    = anchor.replace(month=1, day=1)
+        date_to      = anchor.replace(month=12, day=31)
+        prev_anchor  = anchor.replace(year=anchor.year - 1).isoformat()
+        next_anchor  = anchor.replace(year=anchor.year + 1).isoformat()
+        period_label = f"{anchor.year}年"
+    else:  # day
+        date_from    = anchor
+        date_to      = anchor
+        prev_anchor  = prev_workday(anchor).isoformat()
+        next_anchor  = next_workday(anchor).isoformat()
+        period_label = (f"{anchor.year}年{anchor.month}月{anchor.day}日"
+                        f"（週{WEEKDAY_ZH[anchor.weekday()]}）")
+
+    rows = conn.execute("""
         SELECT a.*, p.name AS patient_name
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
-        WHERE a.therapist_id = ? AND a.date >= ? AND a.date <= ? AND a.status = 'completed'
-        ORDER BY a.date DESC, a.start_time DESC
-    """, (therapist_id, month_start.isoformat(), month_end.isoformat())).fetchall()
-
-    recent = conn.execute("""
-        SELECT a.*, p.name AS patient_name
-        FROM appointments a
-        JOIN patients p ON a.patient_id = p.id
-        WHERE a.therapist_id = ? AND a.status != 'cancelled'
-        ORDER BY a.date DESC, a.start_time DESC
-        LIMIT 10
-    """, (therapist_id,)).fetchall()
-
+        WHERE a.therapist_id = ? AND a.date >= ? AND a.date <= ?
+        ORDER BY a.date, a.start_time
+    """, (therapist_id, date_from.isoformat(), date_to.isoformat())).fetchall()
     conn.close()
 
-    month_revenue = sum(r['cost'] for r in completed)
-    month_sessions = len(completed)
+    active   = [r for r in rows if r['status'] != 'cancelled']
+    completed = [r for r in rows if r['status'] == 'completed']
+    revenue  = sum(r['cost'] for r in completed)
+
+    # Daily breakdown (week / month)
+    daily_breakdown = []
+    if period in ('week', 'month'):
+        by_date = defaultdict(list)
+        for a in rows:
+            by_date[a['date']].append(a)
+        d = date_from
+        while d <= date_to:
+            if d.weekday() < 5:
+                da = by_date[d.isoformat()]
+                daily_breakdown.append({
+                    'date':      d.isoformat(),
+                    'weekday':   WEEKDAY_ZH[d.weekday()],
+                    'count':     len([a for a in da if a['status'] != 'cancelled']),
+                    'completed': len([a for a in da if a['status'] == 'completed']),
+                    'revenue':   sum(a['cost'] for a in da if a['status'] == 'completed'),
+                })
+            d += timedelta(days=1)
+
+    # Monthly breakdown (year)
+    monthly_breakdown = []
+    if period == 'year':
+        by_month = defaultdict(list)
+        for a in rows:
+            by_month[a['date'][:7]].append(a)
+        for m in range(1, 13):
+            key = f"{anchor.year}-{m:02d}"
+            ma  = by_month[key]
+            monthly_breakdown.append({
+                'key':       key,
+                'label':     f"{m}月",
+                'count':     len([a for a in ma if a['status'] != 'cancelled']),
+                'completed': len([a for a in ma if a['status'] == 'completed']),
+                'revenue':   sum(a['cost'] for a in ma if a['status'] == 'completed'),
+            })
 
     return render_template('therapist_profile.html',
         t=dict(t),
         color=THERAPIST_COLORS.get(t['name'], '#6b7280'),
-        month_label=f"{today.year}年{today.month}月",
-        month_sessions=month_sessions,
-        month_revenue=month_revenue,
-        recent=recent,
+        period=period,
+        period_label=period_label,
+        anchor=anchor,
+        prev_anchor=prev_anchor,
+        next_anchor=next_anchor,
+        appointments=rows,
+        active_count=len(active),
+        session_count=len(completed),
+        revenue=revenue,
+        daily_breakdown=daily_breakdown,
+        monthly_breakdown=monthly_breakdown,
     )
 
 

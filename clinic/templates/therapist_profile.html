@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
 
+<!-- Header -->
 <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
   <div class="d-flex align-items-center gap-3">
-    <span style="width:14px;height:36px;border-radius:4px;background:{{ color }};display:inline-block;flex-shrink:0"></span>
+    <span style="width:14px;height:40px;border-radius:4px;background:{{ color }};display:inline-block;flex-shrink:0"></span>
     <div>
       <p class="text-uppercase mb-0" style="font-size:0.68rem;letter-spacing:0.12em;color:var(--gold)">THERAPIST</p>
       <h5 class="page-title mb-0">{{ t.name }}</h5>
@@ -21,44 +22,65 @@
 
 <div class="row g-4">
 
-  <!-- Left column: stats + recent appointments -->
-  <div class="col-lg-7">
+  <!-- ── Left: report ─────────────────────────────── -->
+  <div class="col-lg-8">
 
-    <!-- This month stats -->
-    <div class="card shadow-sm mb-4">
-      <div class="card-header gold-header">
-        <p class="text-uppercase mb-0" style="font-size:0.65rem;letter-spacing:0.12em;color:var(--gold)">THIS MONTH</p>
-        <h6 class="mb-0 fw-600">{{ month_label }} 摘要</h6>
+    <!-- Period tabs -->
+    <div class="d-flex gap-1 mb-3 flex-wrap">
+      {% for p, label in [('day','日報表'),('week','週報表'),('month','月報表'),('year','年報表')] %}
+      <a href="/therapists/{{ t.id }}?period={{ p }}&date={{ anchor.isoformat() }}"
+         class="btn btn-sm {% if period == p %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        {{ label }}
+      </a>
+      {% endfor %}
+    </div>
+
+    <!-- Date navigation -->
+    <div class="d-flex align-items-center justify-content-between px-1 py-2 mb-4"
+         style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius)">
+      <a href="/therapists/{{ t.id }}?period={{ period }}&date={{ prev_anchor }}"
+         class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+      <span style="font-size:0.95rem;font-weight:600;color:var(--dark)">{{ period_label }}</span>
+      <a href="/therapists/{{ t.id }}?period={{ period }}&date={{ next_anchor }}"
+         class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </div>
+
+    <!-- Summary stats -->
+    <div class="row g-3 mb-4">
+      <div class="col-4">
+        <div class="card shadow-sm text-center p-3">
+          <div class="fs-3 fw-bold" style="color:var(--brand-dark)">{{ active_count }}</div>
+          <div class="small text-muted mt-1">診次（含預約）</div>
+        </div>
       </div>
-      <div class="card-body">
-        <div class="row g-3 text-center">
-          <div class="col-6">
-            <div class="p-3 rounded" style="background:var(--gold-light)">
-              <div class="fs-3 fw-bold" style="color:var(--brand-dark)">{{ month_sessions }}</div>
-              <div class="small text-muted mt-1">完成診次</div>
-            </div>
-          </div>
-          <div class="col-6">
-            <div class="p-3 rounded" style="background:var(--gold-light)">
-              <div class="fs-3 fw-bold" style="color:var(--brand-dark)">NT$ {{ month_revenue | int | string | replace('0', '0') }}</div>
-              <div class="small text-muted mt-1">治療收入</div>
-            </div>
-          </div>
+      <div class="col-4">
+        <div class="card shadow-sm text-center p-3">
+          <div class="fs-3 fw-bold" style="color:var(--brand-dark)">{{ session_count }}</div>
+          <div class="small text-muted mt-1">完成診次</div>
+        </div>
+      </div>
+      <div class="col-4">
+        <div class="card shadow-sm text-center p-3">
+          <div class="fs-3 fw-bold" style="color:var(--brand-dark)">{{ revenue | int }}</div>
+          <div class="small text-muted mt-1">治療收入 (NT$)</div>
         </div>
       </div>
     </div>
 
-    <!-- Recent appointments -->
+    <!-- ── Day view: appointment list ── -->
+    {% if period == 'day' %}
     <div class="card shadow-sm">
       <div class="card-header gold-header">
-        <p class="text-uppercase mb-0" style="font-size:0.65rem;letter-spacing:0.12em;color:var(--gold)">RECENT</p>
-        <h6 class="mb-0 fw-600">最近預約（最新 10 筆）</h6>
+        <h6 class="mb-0 fw-600">{{ period_label }} 預約明細</h6>
       </div>
       <div class="table-responsive">
         <table class="table table-hover align-middle mb-0" style="font-size:0.85rem">
           <thead class="table-light">
             <tr>
-              <th>日期</th>
               <th>時間</th>
               <th>個案</th>
               <th class="text-end">費用</th>
@@ -66,9 +88,8 @@
             </tr>
           </thead>
           <tbody>
-            {% for a in recent %}
+            {% for a in appointments %}
             <tr>
-              <td>{{ a.date }}</td>
               <td>{{ a.start_time }}</td>
               <td>{{ a.patient_name }}</td>
               <td class="text-end">NT$ {{ a.cost | int }}</td>
@@ -83,19 +104,98 @@
               </td>
             </tr>
             {% else %}
-            <tr>
-              <td colspan="5" class="text-center text-muted py-4">尚無預約紀錄</td>
-            </tr>
+            <tr><td colspan="4" class="text-center text-muted py-4">當日無預約紀錄</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     </div>
 
+    <!-- ── Week / Month view: daily breakdown ── -->
+    {% elif period in ('week', 'month') %}
+    <div class="card shadow-sm">
+      <div class="card-header gold-header">
+        <h6 class="mb-0 fw-600">每日明細</h6>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size:0.85rem">
+          <thead class="table-light">
+            <tr>
+              <th>日期</th>
+              <th class="text-center">診次</th>
+              <th class="text-center">完成</th>
+              <th class="text-end">收入 (NT$)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in daily_breakdown %}
+            <tr {% if d.count == 0 %}class="text-muted"{% endif %}>
+              <td>{{ d.date }} <span class="text-muted small">（週{{ d.weekday }}）</span></td>
+              <td class="text-center">{{ d.count }}</td>
+              <td class="text-center">{{ d.completed }}</td>
+              <td class="text-end">{{ d.revenue | int }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-center text-muted py-4">無資料</td></tr>
+            {% endfor %}
+          </tbody>
+          {% if daily_breakdown %}
+          <tfoot class="table-light fw-bold">
+            <tr>
+              <td>合計</td>
+              <td class="text-center">{{ daily_breakdown | sum(attribute='count') }}</td>
+              <td class="text-center">{{ daily_breakdown | sum(attribute='completed') }}</td>
+              <td class="text-end">{{ daily_breakdown | sum(attribute='revenue') | int }}</td>
+            </tr>
+          </tfoot>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Year view: monthly breakdown ── -->
+    {% elif period == 'year' %}
+    <div class="card shadow-sm">
+      <div class="card-header gold-header">
+        <h6 class="mb-0 fw-600">每月明細</h6>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size:0.85rem">
+          <thead class="table-light">
+            <tr>
+              <th>月份</th>
+              <th class="text-center">診次</th>
+              <th class="text-center">完成</th>
+              <th class="text-end">收入 (NT$)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in monthly_breakdown %}
+            <tr {% if m.count == 0 %}class="text-muted"{% endif %}>
+              <td>{{ m.label }}</td>
+              <td class="text-center">{{ m.count }}</td>
+              <td class="text-center">{{ m.completed }}</td>
+              <td class="text-end">{{ m.revenue | int }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot class="table-light fw-bold">
+            <tr>
+              <td>合計</td>
+              <td class="text-center">{{ monthly_breakdown | sum(attribute='count') }}</td>
+              <td class="text-center">{{ monthly_breakdown | sum(attribute='completed') }}</td>
+              <td class="text-end">{{ monthly_breakdown | sum(attribute='revenue') | int }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
   </div>
 
-  <!-- Right column: settings -->
-  <div class="col-lg-5">
+  <!-- ── Right: settings ─────────────────────────── -->
+  <div class="col-lg-4">
 
     <!-- Work hours -->
     <div class="card shadow-sm mb-4">
@@ -128,7 +228,7 @@
       </div>
     </div>
 
-    <!-- Salary formula (read-only summary) -->
+    <!-- Salary formula (read-only) -->
     <div class="card shadow-sm">
       <div class="card-header gold-header">
         <p class="text-uppercase mb-0" style="font-size:0.65rem;letter-spacing:0.12em;color:var(--gold)">SALARY FORMULA</p>
@@ -149,7 +249,8 @@
             {% endif %}
           </span>
         </div>
-        <div class="p-2 rounded text-center" style="background:var(--gold-light);font-size:0.78rem;color:var(--text-muted)">
+        <div class="p-2 rounded text-center"
+             style="background:var(--gold-light);font-size:0.78rem;color:var(--text-muted)">
           公式：底薪 NT${{ t.base_salary | int if t.base_salary else 0 }} +
           {% if t.commission_type == 'per_session' %}
             診次數 × NT${{ t.commission_value | int if t.commission_value else 0 }}
