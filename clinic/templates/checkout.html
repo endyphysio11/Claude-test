@@ -13,7 +13,7 @@
 
         <!-- 費用明細 -->
         <div class="p-3 rounded mb-4" style="background:var(--gold-light)">
-          <div class="row g-2">
+          <div class="row g-2 mb-2">
             <div class="col-6">
               <div class="small text-muted">個案</div>
               <div class="fw-semibold">{{ appt.patient_name }}</div>
@@ -34,47 +34,84 @@
           <hr class="my-2">
           <div class="d-flex justify-content-between align-items-center">
             <span class="fw-semibold">應收金額</span>
-            <span class="fw-bold fs-4" style="color:var(--brand-dark)">
-              NT$ {{ appt.cost | int }}
-            </span>
+            <span class="fw-bold fs-4" style="color:var(--brand-dark)">NT$ {{ appt.cost | int }}</span>
           </div>
         </div>
 
         <!-- 付款方式 -->
-        <form method="post">
-          <div class="mb-4">
+        <form method="post" id="checkout-form">
+          <div class="mb-3">
             <label class="form-label fw-semibold">付款方式</label>
             <div class="row g-2">
-              <div class="col-6">
+              <div class="col-4">
                 <label class="d-block" style="cursor:pointer">
-                  <input type="radio" name="payment_method" value="cash" class="visually-hidden pay-radio"
+                  <input type="radio" name="payment_method" value="cash"
+                         class="visually-hidden pay-radio" onchange="toggleMethod()"
                          {% if not appt.payment_method or appt.payment_method == 'cash' %}checked{% endif %}>
-                  <div class="pay-card text-center p-3 rounded border {% if not appt.payment_method or appt.payment_method == 'cash' %}selected{% endif %}"
-                       style="transition:all 0.15s">
+                  <div class="pay-card text-center p-3 rounded border {% if not appt.payment_method or appt.payment_method == 'cash' %}selected{% endif %}">
                     <i class="bi bi-cash-stack fs-3 d-block mb-1" style="color:var(--brand-dark)"></i>
-                    <div class="fw-semibold">現金</div>
+                    <div class="fw-semibold small">現金</div>
                   </div>
                 </label>
               </div>
-              <div class="col-6">
+              <div class="col-4">
                 <label class="d-block" style="cursor:pointer">
-                  <input type="radio" name="payment_method" value="transfer" class="visually-hidden pay-radio"
+                  <input type="radio" name="payment_method" value="transfer"
+                         class="visually-hidden pay-radio" onchange="toggleMethod()"
                          {% if appt.payment_method == 'transfer' %}checked{% endif %}>
-                  <div class="pay-card text-center p-3 rounded border {% if appt.payment_method == 'transfer' %}selected{% endif %}"
-                       style="transition:all 0.15s">
+                  <div class="pay-card text-center p-3 rounded border {% if appt.payment_method == 'transfer' %}selected{% endif %}">
                     <i class="bi bi-bank fs-3 d-block mb-1" style="color:var(--brand-dark)"></i>
-                    <div class="fw-semibold">匯款</div>
+                    <div class="fw-semibold small">匯款</div>
+                  </div>
+                </label>
+              </div>
+              <div class="col-4">
+                <label class="d-block" style="cursor:pointer">
+                  <input type="radio" name="payment_method" value="session"
+                         class="visually-hidden pay-radio" onchange="toggleMethod()"
+                         {% if appt.payment_method == 'session' %}checked{% endif %}>
+                  <div class="pay-card text-center p-3 rounded border {% if appt.payment_method == 'session' %}selected{% endif %}">
+                    <i class="bi bi-card-checklist fs-3 d-block mb-1" style="color:var(--brand-dark)"></i>
+                    <div class="fw-semibold small">使用堂數</div>
                   </div>
                 </label>
               </div>
             </div>
           </div>
 
+          <!-- 堂數方案選擇（使用堂數時顯示） -->
+          <div id="session-section" class="mb-4 p-3 rounded"
+               style="display:{% if appt.payment_method == 'session' %}block{% else %}none{% endif %};
+                      background:var(--gold-light);border:1px solid var(--gold-mid)">
+            <label class="form-label fw-semibold mb-2">選擇方案</label>
+            {% if packages %}
+            <select name="session_package_id" id="pkg-select" class="form-select mb-2"
+                    onchange="updatePkgInfo()">
+              <option value="">— 請選擇 —</option>
+              {% for pkg in packages %}
+              {% set rem = pkg.total_sessions - pkg.used_sessions %}
+              <option value="{{ pkg.id }}"
+                      data-remaining="{{ rem }}"
+                      data-price="{{ pkg.price_per_session | int }}"
+                      {% if appt.session_package_id == pkg.id %}selected{% endif %}>
+                {{ pkg.package_type }} — 剩 {{ rem }} / {{ pkg.total_sessions }} 堂（NT${{ pkg.price_per_session | int }}/堂）
+              </option>
+              {% endfor %}
+            </select>
+            <div id="pkg-info" class="small text-muted"></div>
+            {% else %}
+            <div class="text-muted small">
+              此個案尚無有效堂數方案。
+              <a href="/patients/{{ appt.patient_id }}/records" target="_blank">前往購買</a>
+            </div>
+            {% endif %}
+          </div>
+
           <div class="d-flex gap-2 justify-content-end">
             <a href="/calendar" class="btn btn-outline-secondary">
               <i class="bi bi-x-lg me-1"></i>取消
             </a>
-            <button type="submit" class="btn btn-primary px-4">
+            <button type="submit" class="btn btn-primary px-4" onclick="return validateForm()">
               <i class="bi bi-check-lg me-1"></i>確認收款
             </button>
           </div>
@@ -87,7 +124,11 @@
 </div>
 
 <style>
-.pay-card { border-color: var(--border) !important; }
+.pay-card {
+  border-color: var(--border) !important;
+  transition: all 0.15s;
+  cursor: pointer;
+}
 .pay-card:hover { border-color: var(--gold) !important; background: var(--gold-light); }
 .pay-card.selected { border-color: var(--brand-dark) !important; background: var(--gold-light); }
 </style>
@@ -99,6 +140,43 @@ document.querySelectorAll('.pay-radio').forEach(radio => {
     this.closest('label').querySelector('.pay-card').classList.add('selected');
   });
 });
+
+function toggleMethod() {
+  const method = document.querySelector('.pay-radio:checked')?.value;
+  document.getElementById('session-section').style.display =
+    method === 'session' ? 'block' : 'none';
+  if (method === 'session') updatePkgInfo();
+}
+
+function updatePkgInfo() {
+  const sel  = document.getElementById('pkg-select');
+  if (!sel) return;
+  const opt  = sel.options[sel.selectedIndex];
+  const info = document.getElementById('pkg-info');
+  if (opt && opt.dataset.remaining !== undefined) {
+    const rem   = parseInt(opt.dataset.remaining);
+    const price = opt.dataset.price;
+    info.innerHTML = `扣除 1 堂後剩餘 <strong>${rem - 1}</strong> 堂`;
+    if (rem <= 0) info.innerHTML += ' <span class="text-danger">（已無剩餘堂數）</span>';
+  } else {
+    info.textContent = '';
+  }
+}
+
+function validateForm() {
+  const method = document.querySelector('.pay-radio:checked')?.value;
+  if (method === 'session') {
+    const sel = document.getElementById('pkg-select');
+    if (!sel || !sel.value) {
+      alert('請選擇堂數方案');
+      return false;
+    }
+  }
+  return true;
+}
+
+// Init
+updatePkgInfo();
 </script>
 
 {% endblock %}

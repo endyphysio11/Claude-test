@@ -340,17 +340,15 @@ def new_appointment():
         f = request.form
         is_designated      = 1 if f.get('is_designated') == '1' else 0
         referral_source    = f.get('referral_source', '') if not is_designated else ''
-        payment_method     = f.get('payment_method', 'cash')
-        session_package_id = f.get('session_package_id') or None
         conn.execute("""
             INSERT INTO appointments
                 (patient_id, therapist_id, date, start_time, duration, cost, notes,
-                 is_designated, referral_source, service_type, payment_method, session_package_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 is_designated, referral_source, service_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (f['patient_id'], f['therapist_id'], f['date'],
               f['start_time'], int(f['duration']), float(f['cost'] or 0),
               f.get('notes', ''), is_designated, referral_source,
-              f.get('service_type', 'full_treatment'), payment_method, session_package_id))
+              f.get('service_type', 'full_treatment')))
         conn.commit()
         conn.close()
         flash('預約已新增', 'success')
@@ -365,7 +363,6 @@ def new_appointment():
         duration_options=DURATION_OPTIONS,
         referral_sources=REFERRAL_SOURCES,
         service_types=SERVICE_TYPES,
-        package_types=PACKAGE_TYPES,
         default_date=request.args.get('date', date.today().isoformat()),
         default_therapist=request.args.get('therapist_id', ''),
         default_time=request.args.get('start_time', ''),
@@ -383,32 +380,22 @@ def edit_appointment(appt_id):
         f = request.form
         is_designated      = 1 if f.get('is_designated') == '1' else 0
         referral_source    = f.get('referral_source', '') if not is_designated else ''
-        payment_method     = f.get('payment_method', 'cash')
-        session_package_id = f.get('session_package_id') or None
         conn.execute("""
             UPDATE appointments
             SET patient_id=?, therapist_id=?, date=?, start_time=?,
                 duration=?, cost=?, status=?, notes=?,
-                is_designated=?, referral_source=?, service_type=?,
-                payment_method=?, session_package_id=?
+                is_designated=?, referral_source=?, service_type=?
             WHERE id=?
         """, (f['patient_id'], f['therapist_id'], f['date'],
               f['start_time'], int(f['duration']), float(f['cost'] or 0),
               f.get('status', 'scheduled'), f.get('notes', ''),
               is_designated, referral_source,
-              f.get('service_type', 'full_treatment'),
-              payment_method, session_package_id, appt_id))
+              f.get('service_type', 'full_treatment'), appt_id))
         conn.commit()
         conn.close()
         flash('預約已更新', 'success')
         return redirect(url_for('calendar_view', date=f['date']))
 
-    # Fetch existing packages for this patient (edit mode)
-    patient_packages = conn.execute("""
-        SELECT * FROM session_packages
-        WHERE patient_id = ? AND used_sessions < total_sessions
-        ORDER BY created_at
-    """, (appt['patient_id'],)).fetchall()
     conn.close()
     return render_template('appointment_form.html',
         therapists=therapists,
@@ -418,8 +405,6 @@ def edit_appointment(appt_id):
         duration_options=DURATION_OPTIONS,
         referral_sources=REFERRAL_SOURCES,
         service_types=SERVICE_TYPES,
-        package_types=PACKAGE_TYPES,
-        patient_packages=patient_packages,
         default_date=appt['date'],
         default_therapist=str(appt['therapist_id']),
         default_time=appt['start_time'],
@@ -439,15 +424,8 @@ def cancel_appointment(appt_id):
 
 @app.route('/appointments/<int:appt_id>/complete', methods=['POST'])
 def complete_appointment(appt_id):
-    conn = get_db()
-    row = conn.execute(
-        "SELECT date FROM appointments WHERE id = ?", (appt_id,)
-    ).fetchone()
-    conn.execute("UPDATE appointments SET status='completed' WHERE id = ?", (appt_id,))
-    conn.commit()
-    conn.close()
-    flash('預約已標記為完成', 'success')
-    return redirect(url_for('calendar_view', date=row['date']))
+    # Redirect to checkout — completion happens there
+    return redirect(url_for('checkout_appointment', appt_id=appt_id))
 
 
 @app.route('/appointments/<int:appt_id>/checkout', methods=['GET', 'POST'])
@@ -465,25 +443,42 @@ def checkout_appointment(appt_id):
         flash('找不到預約', 'danger')
         return redirect(url_for('calendar_view'))
 
-    # If session package → go to sign page
-    if appt['session_package_id']:
-        conn.close()
-        return redirect(url_for('sign_appointment', appt_id=appt_id))
-
     if request.method == 'POST':
-        method = request.form.get('payment_method', appt['payment_method'] or 'cash')
-        conn.execute("""
-            UPDATE appointments
-            SET payment_method=?, payment_status='paid', status='completed'
-            WHERE id=?
-        """, (method, appt_id))
-        conn.commit()
-        conn.close()
-        flash('結帳完成，已記錄付款', 'success')
-        return redirect(url_for('calendar_view', date=appt['date']))
+        method = request.form.get('payment_method', 'cash')
+        if method == 'session':
+            pkg_id = request.form.get('session_package_id')
+            if not pkg_id:
+                conn.close()
+                flash('請選擇堂數方案', 'danger')
+                return redirect(url_for('checkout_appointment', appt_id=appt_id))
+            conn.execute("""
+                UPDATE appointments
+                SET payment_method='session', session_package_id=?, status='completed'
+                WHERE id=?
+            """, (pkg_id, appt_id))
+            conn.commit()
+            conn.close()
+            return redirect(url_for('sign_appointment', appt_id=appt_id))
+        else:
+            conn.execute("""
+                UPDATE appointments
+                SET payment_method=?, payment_status='paid', status='completed',
+                    session_package_id=NULL
+                WHERE id=?
+            """, (method, appt_id))
+            conn.commit()
+            conn.close()
+            flash('結帳完成，已記錄付款', 'success')
+            return redirect(url_for('calendar_view', date=appt['date']))
 
+    # GET: load available packages for this patient
+    packages = conn.execute("""
+        SELECT * FROM session_packages
+        WHERE patient_id = ? AND used_sessions < total_sessions
+        ORDER BY created_at
+    """, (appt['patient_id'],)).fetchall()
     conn.close()
-    return render_template('checkout.html', appt=dict(appt))
+    return render_template('checkout.html', appt=dict(appt), packages=packages)
 
 
 @app.route('/appointments/<int:appt_id>/sign', methods=['GET', 'POST'])

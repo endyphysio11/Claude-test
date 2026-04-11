@@ -81,11 +81,6 @@
         <a id="modal-checkout-btn" href="#" class="btn btn-sm btn-warning text-dark">
           <i class="bi bi-cash-coin me-1"></i>結帳
         </a>
-        <form id="modal-complete-form" method="post" class="m-0">
-          <button type="submit" id="modal-complete-btn" class="btn btn-sm btn-success">
-            <i class="bi bi-check-lg me-1"></i>完成
-          </button>
-        </form>
         <form id="modal-cancel-form" method="post" class="m-0"
               onsubmit="return confirm('確定取消此預約？')">
           <button type="submit" class="btn btn-sm btn-outline-danger">
@@ -214,11 +209,7 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('modal-edit-btn').href        = `/appointments/${id}/edit`;
       document.getElementById('modal-record-btn').href      = `/records/new?patient_id=${p.patient_id}&appointment_id=${id}`;
       document.getElementById('modal-checkout-btn').href    = `/appointments/${id}/checkout`;
-      document.getElementById('modal-complete-form').action = `/appointments/${id}/complete`;
       document.getElementById('modal-cancel-form').action   = `/appointments/${id}/cancel`;
-      // 完成：只在已預約時顯示
-      document.getElementById('modal-complete-btn').closest('form').style.display =
-        p.status === 'scheduled' ? '' : 'none';
       // 結帳：取消的不顯示；已付款的顯示灰色
       const checkoutBtn = document.getElementById('modal-checkout-btn');
       if (p.status === 'cancelled') {

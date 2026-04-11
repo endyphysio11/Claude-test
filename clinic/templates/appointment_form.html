@@ -114,62 +114,6 @@
             </div>
           </div>
 
-          <!-- 付款方式 -->
-          <div class="mb-3">
-            <label class="form-label fw-semibold">付款方式</label>
-            <div class="d-flex gap-3 flex-wrap">
-              <div class="form-check">
-                <input class="form-check-input" type="radio" name="payment_method"
-                       id="pay_cash" value="cash" onchange="togglePayment()"
-                       {% if not appointment or not appointment.get('payment_method') or appointment.get('payment_method') == 'cash' %}checked{% endif %}>
-                <label class="form-check-label" for="pay_cash">
-                  <i class="bi bi-cash me-1"></i>現金
-                </label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input" type="radio" name="payment_method"
-                       id="pay_transfer" value="transfer" onchange="togglePayment()"
-                       {% if appointment and appointment.get('payment_method') == 'transfer' %}checked{% endif %}>
-                <label class="form-check-label" for="pay_transfer">
-                  <i class="bi bi-bank me-1"></i>匯款
-                </label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input" type="radio" name="payment_method"
-                       id="pay_session" value="session" onchange="togglePayment()"
-                       {% if appointment and appointment.get('payment_method') == 'session' %}checked{% endif %}>
-                <label class="form-check-label" for="pay_session">
-                  <i class="bi bi-card-checklist me-1"></i>使用堂數
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <!-- 堂數方案選擇 -->
-          <div class="mb-3 p-3 rounded" id="package-section"
-               style="display:none;background:var(--gold-light);border:1px solid var(--gold-mid)">
-            <label class="form-label fw-semibold mb-2">堂數方案</label>
-            <select name="session_package_id" id="session_package_select" class="form-select mb-2">
-              <option value="">— 請先選擇個案 —</option>
-              {% if appointment and patient_packages is defined %}
-                {% for pkg in patient_packages %}
-                <option value="{{ pkg.id }}"
-                  data-remaining="{{ pkg.total_sessions - pkg.used_sessions }}"
-                  data-price="{{ pkg.price_per_session | int }}"
-                  {% if appointment.get('session_package_id') == pkg.id %}selected{% endif %}>
-                  {{ pkg.package_type }} — 剩 {{ pkg.total_sessions - pkg.used_sessions }} / {{ pkg.total_sessions }} 堂（NT${{ pkg.price_per_session | int }}/堂）
-                </option>
-                {% endfor %}
-              {% endif %}
-            </select>
-            <div id="package-info" class="small text-muted"></div>
-            <div class="mt-2">
-              <a id="buy-package-link" href="#" class="small" target="_blank" style="display:none;color:var(--gold)">
-                <i class="bi bi-plus-circle me-1"></i>為此個案購買新方案
-              </a>
-            </div>
-          </div>
-
           <!-- 狀態（僅編輯模式顯示） -->
           {% if appointment %}
           <div class="mb-3">
@@ -279,83 +223,12 @@ function toggleReferral() {
   document.getElementById('referral_row').style.display = notDesignated ? '' : 'none';
 }
 
-function togglePayment() {
-  const isSession = document.getElementById('pay_session').checked;
-  const section = document.getElementById('package-section');
-  section.style.display = isSession ? '' : 'none';
-  if (isSession) {
-    const pid = document.querySelector('[name="patient_id"]').value;
-    if (pid) loadPackages(pid);
-  }
-}
-
-async function loadPackages(patientId) {
-  const sel = document.getElementById('session_package_select');
-  const info = document.getElementById('package-info');
-  const buyLink = document.getElementById('buy-package-link');
-
-  sel.innerHTML = '<option value="">載入中...</option>';
-  try {
-    const res = await fetch(`/api/patients/${patientId}/packages`);
-    const pkgs = await res.json();
-    if (pkgs.length === 0) {
-      sel.innerHTML = '<option value="">此個案尚無有效堂數方案</option>';
-      info.textContent = '請先至個案病歷頁面購買方案';
-    } else {
-      sel.innerHTML = '<option value="">— 請選擇方案 —</option>';
-      pkgs.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.dataset.remaining = p.remaining;
-        opt.dataset.price = p.price_per_session;
-        opt.textContent = `${p.package_type} — 剩 ${p.remaining} / ${p.total} 堂（NT$${p.price_per_session}/堂）`;
-        {% if appointment %}
-        if (p.id == {{ appointment.get('session_package_id') or 'null' }}) opt.selected = true;
-        {% endif %}
-        sel.appendChild(opt);
-      });
-      updatePackageInfo();
-    }
-    buyLink.href = `/patients/${patientId}/records`;
-    buyLink.style.display = '';
-  } catch (e) {
-    sel.innerHTML = '<option value="">載入失敗</option>';
-  }
-}
-
-function updatePackageInfo() {
-  const sel = document.getElementById('session_package_select');
-  const info = document.getElementById('package-info');
-  const opt = sel.options[sel.selectedIndex];
-  if (opt && opt.dataset.remaining !== undefined) {
-    const rem = parseInt(opt.dataset.remaining);
-    const price = opt.dataset.price;
-    info.innerHTML = `剩餘 <strong>${rem}</strong> 堂 · 本次費用 NT$${price}`;
-    if (price) document.getElementById('cost').value = price;
-    if (rem <= 0) {
-      info.innerHTML += ' <span class="text-danger">（堂數已用盡）</span>';
-    }
-  } else {
-    info.textContent = '';
-  }
-}
-
-document.getElementById('session_package_select').addEventListener('change', updatePackageInfo);
-document.querySelector('[name="patient_id"]').addEventListener('change', function () {
-  if (document.getElementById('pay_session').checked) loadPackages(this.value);
-});
-
 // Initialise on load
 document.addEventListener('DOMContentLoaded', function () {
   const checked = document.querySelector('.svc-radio:checked');
   if (checked) applyServicePreset(checked.value);
   {% if appointment %}
   document.getElementById('cost').value = '{{ appointment.cost | int }}';
-  {% endif %}
-  togglePayment();
-  {% if appointment and appointment.get('payment_method') == 'session' %}
-  const pid = document.querySelector('[name="patient_id"]').value;
-  if (pid) loadPackages(pid);
   {% endif %}
 });
 </script>
