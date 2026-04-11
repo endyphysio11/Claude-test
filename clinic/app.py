@@ -549,6 +549,7 @@ def receipt(appt_id):
         return redirect(url_for('calendar_view'))
     # Compute ROC date from appointment date
     appt_date = appt['date']  # YYYY-MM-DD
+    roc_year = ''
     try:
         d = datetime.strptime(appt_date, '%Y-%m-%d')
         roc_year  = d.year - 1911
@@ -560,7 +561,8 @@ def receipt(appt_id):
     return render_template('receipt.html',
                            appt=dict(appt),
                            roc_date=roc_date,
-                           roc_short=roc_short)
+                           roc_short=roc_short,
+                           roc_year=roc_year)
 
 
 @app.route('/appointments/<int:appt_id>/sign', methods=['GET', 'POST'])

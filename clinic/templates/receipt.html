@@ -3,8 +3,8 @@
 
 <div class="row g-4">
 
-  <!-- ── Left: Setup form ───────────────────────────── -->
-  <div class="col-lg-5 no-print">
+  <!-- ── Setup panel (hidden when printing) ───────── -->
+  <div class="col-xl-4 col-lg-5 no-print">
     <div class="card shadow-sm mb-3">
       <div class="card-header gold-header">
         <p class="text-uppercase mb-0" style="font-size:0.65rem;letter-spacing:0.12em;color:var(--gold)">RECEIPT SETUP</p>
@@ -12,8 +12,7 @@
       </div>
       <div class="card-body">
 
-        <!-- Patient info (read-only) -->
-        <div class="p-3 rounded mb-4" style="background:var(--gold-light)">
+        <div class="p-3 rounded mb-3" style="background:var(--gold-light)">
           <div class="row g-2">
             <div class="col-6">
               <div class="small text-muted">個案姓名</div>
@@ -34,267 +33,332 @@
           </div>
         </div>
 
-        <!-- Fee items -->
         <div class="mb-3">
-          <label class="form-label fw-semibold mb-3">勾選費用項目</label>
-          <div id="fee-items">
-            <!-- item rows injected by JS -->
-          </div>
+          <label class="form-label fw-semibold mb-2">勾選費用項目</label>
+          <div id="fee-items"></div>
           <button type="button" class="btn btn-sm btn-outline-secondary mt-2"
                   onclick="addCustomItem()">
             <i class="bi bi-plus-circle me-1"></i>新增其他項目
           </button>
         </div>
 
-        <hr>
+        <hr class="my-3">
 
-        <!-- Totals -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
           <span class="fw-semibold">合計金額</span>
           <span id="setup-total" class="fw-bold fs-5" style="color:var(--brand-dark)">NT$ 0</span>
         </div>
 
-        <!-- Print button -->
-        <div class="d-flex gap-2">
-          <button onclick="window.print()" class="btn btn-primary w-100">
-            <i class="bi bi-printer me-1"></i>列印收據
-          </button>
-        </div>
-        <div class="text-muted small mt-2 text-center">建議使用 A5 紙列印，或儲存為 PDF</div>
+        <button onclick="window.print()" class="btn btn-primary w-100">
+          <i class="bi bi-printer me-1"></i>列印收據
+        </button>
+        <div class="text-muted small mt-2 text-center">A5 橫向列印 / 儲存 PDF</div>
 
       </div>
     </div>
   </div>
 
-  <!-- ── Right: Receipt preview ─────────────────────── -->
-  <div class="col-lg-7">
+  <!-- ── Receipt preview ──────────────────────────── -->
+  <div class="col-xl-8 col-lg-7">
     <div class="no-print text-muted small mb-2 text-center">
       <i class="bi bi-eye me-1"></i>預覽（列印時不含此提示）
     </div>
 
-    <!-- receipt-paper is what gets printed -->
     <div id="receipt-paper" class="receipt-paper mx-auto">
 
-      <!-- Header -->
-      <div class="r-header">
-        <div class="r-clinic-en">THE PLATINUM</div>
-        <div class="r-clinic-zh">鉑適物理治療暨健康促進中心</div>
-        <div class="r-receipt-title">收　　據</div>
+      <!-- Left vertical title strip -->
+      <div class="r-strip">
+        <div class="r-strip-zh">鉑&emsp;適&emsp;物&emsp;理&emsp;治&emsp;療&emsp;所&emsp;&emsp;&emsp;治&emsp;療&emsp;收&emsp;據</div>
+        <div class="r-strip-en">The Platinum Physical Therapy &amp; Wellness Center</div>
       </div>
 
-      <!-- Patient info row -->
-      <div class="r-info-row">
-        <div class="r-info-cell">
-          <span class="r-label">姓名：</span>
-          <span id="r-name" class="r-value">{{ appt.patient_name }}</span>
-        </div>
-        <div class="r-info-cell">
-          <span class="r-label">日期：</span>
-          <span id="r-date" class="r-value">{{ appt.date }}</span>
-        </div>
-      </div>
+      <!-- Main body -->
+      <div class="r-body">
 
-      <!-- Fee table -->
-      <table class="r-table" id="r-table">
-        <thead>
-          <tr>
-            <th class="r-th-no">項次</th>
-            <th class="r-th-name">項目名稱</th>
-            <th class="r-th-amt">金額（NT$）</th>
-          </tr>
-        </thead>
-        <tbody id="r-tbody">
-          <!-- populated by JS -->
-        </tbody>
-        <tfoot>
-          <tr class="r-total-row">
-            <td colspan="2" class="r-total-label">合　計</td>
-            <td id="r-total" class="r-total-val">0</td>
-          </tr>
-        </tfoot>
-      </table>
-
-      <!-- Notes -->
-      <div class="r-notes">以上金額收訖，特此為憑。</div>
-
-      <!-- Footer row: issuer + stamp -->
-      <div class="r-footer">
-        <div class="r-footer-left">
-          <div class="r-label" style="margin-bottom:2px">收款機構</div>
-          <div class="r-clinic-small">鉑適物理治療暨健康促進中心</div>
-          <div class="r-clinic-addr">台北市大安區安和路一段 79 號</div>
-          <div class="r-clinic-addr">Tel: 02 2758 3285</div>
+        <!-- Top: address left, receipt number right -->
+        <div class="r-top">
+          <div class="r-addr">
+            台北市大安區安和路一段 79 號&emsp;&emsp;統一編號：00111969<br>
+            電話：(02)&thinsp;2758-3285
+          </div>
+          <div class="r-no">{{ '%06d' % appt.id }}</div>
         </div>
-        <div class="r-footer-right">
-          <!-- SVG circular stamp — date injected by JS -->
-          <svg id="r-stamp" width="110" height="110" viewBox="0 0 110 110"
-               xmlns="http://www.w3.org/2000/svg">
-            <!-- outer ring -->
-            <circle cx="55" cy="55" r="52" fill="none"
-                    stroke="#c0392b" stroke-width="2.5"/>
-            <!-- inner ring -->
-            <circle cx="55" cy="55" r="44" fill="none"
-                    stroke="#c0392b" stroke-width="1"/>
-            <!-- top arc text: 鉑適物理治療 -->
-            <path id="topArc" d="M 10,55 A 45,45 0 0,1 100,55" fill="none"/>
-            <text font-size="10" fill="#c0392b" font-family="serif"
-                  font-weight="bold" letter-spacing="2">
-              <textPath href="#topArc" startOffset="8%">鉑　適　物　理　治　療</textPath>
-            </text>
-            <!-- bottom arc text: 健康促進中心 -->
-            <path id="botArc" d="M 14,60 A 45,45 0 0,0 96,60" fill="none"/>
-            <text font-size="9" fill="#c0392b" font-family="serif"
-                  letter-spacing="2">
-              <textPath href="#botArc" startOffset="10%">健　康　促　進　中　心</textPath>
-            </text>
-            <!-- center date (injected by JS) -->
-            <text id="stamp-line1" x="55" y="48" text-anchor="middle"
-                  font-size="9.5" fill="#c0392b" font-family="serif" font-weight="bold"></text>
-            <text id="stamp-line2" x="55" y="61" text-anchor="middle"
-                  font-size="9.5" fill="#c0392b" font-family="serif" font-weight="bold"></text>
-            <text id="stamp-line3" x="55" y="74" text-anchor="middle"
-                  font-size="9.5" fill="#c0392b" font-family="serif" font-weight="bold"></text>
-          </svg>
-        </div>
-      </div>
 
+        <div class="r-hline r-hline-thick"></div>
+
+        <!-- Patient name + ROC date -->
+        <div class="r-infobar">
+          <div>
+            姓名 Name：<span class="r-uline">{{ appt.patient_name }}</span>
+          </div>
+          <div class="r-datecell">
+            {{ roc_year }}&thinsp;年&emsp;
+            {{ appt.date[5:7] | int }}&thinsp;月&emsp;
+            {{ appt.date[8:10] | int }}&thinsp;日
+            （<span id="r-wday"></span>）
+          </div>
+        </div>
+
+        <div class="r-hline"></div>
+
+        <!-- Two-column fee items -->
+        <div class="r-items-wrap">
+          <div class="r-items-col" id="r-col-l"></div>
+          <div class="r-vline"></div>
+          <div class="r-items-col" id="r-col-r"></div>
+        </div>
+
+        <div class="r-hline"></div>
+
+        <!-- Footer: total + therapist -->
+        <div class="r-ftr">
+          <div class="r-ftr-total">
+            Total Payment NTD&ensp;
+            <span class="r-total-val" id="r-total">0</span>
+            &ensp;元整
+          </div>
+          <div class="r-ftr-pt">
+            <div>物理治療師</div>
+            <div class="r-ftr-pt-en">Physical Therapist</div>
+            <div class="r-ftr-pt-name">{{ appt.therapist_name }}</div>
+          </div>
+        </div>
+
+      </div><!-- /r-body -->
     </div><!-- /receipt-paper -->
   </div>
 
 </div><!-- /row -->
 
-<!-- ── Styles ──────────────────────────────────────── -->
+<!-- ── Styles ─────────────────────────────────────── -->
 <style>
-/* ── Setup panel ── */
+/* Setup panel */
 .fee-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 0; border-bottom: 1px solid var(--border);
 }
 .fee-row:last-child { border-bottom: none; }
 .fee-check { width: 16px; height: 16px; accent-color: var(--brand-dark); cursor: pointer; flex-shrink: 0; }
-.fee-name { flex: 1; font-size: 0.84rem; color: var(--text); }
-.fee-amt {
-  width: 90px;
-  font-size: 0.84rem;
-  border: 1px solid var(--border);
-  border-radius: 8px !important;
-  padding: 3px 8px;
-  text-align: right;
-  color: var(--text);
-  background: #fff;
+.fee-name  { flex: 1; font-size: 0.84rem; }
+.fee-amt   {
+  width: 90px; font-size: 0.84rem;
+  border: 1px solid var(--border); border-radius: 8px !important;
+  padding: 3px 8px; text-align: right; background: #fff;
 }
-.fee-amt:focus { outline: none; border-color: var(--gold-mid); box-shadow: 0 0 0 2px rgba(46,127,170,0.15); }
-.fee-del {
-  background: none;
-  border: none;
-  color: #ccc;
-  cursor: pointer;
-  font-size: 0.9rem;
-  padding: 0 2px;
-  line-height: 1;
-}
+.fee-amt:focus { outline: none; border-color: var(--gold-mid); }
+.fee-del   { background: none; border: none; color: #ccc; cursor: pointer; font-size: 0.9rem; padding: 0 2px; }
 .fee-del:hover { color: #e55; }
 
-/* ── Receipt paper ── */
+/* Receipt paper — landscape proportions */
 .receipt-paper {
+  display: flex;
   width: 100%;
-  max-width: 560px;
-  min-height: 720px;
+  max-width: 760px;
+  min-height: 390px;
   background: #fff;
-  border: 1px solid #d4c8b0;
-  border-radius: 4px;
-  padding: 36px 40px 32px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.10);
-  position: relative;
+  border: 1.5px solid #888;
   font-family: 'Noto Serif TC', 'Times New Roman', serif;
+  font-size: 0.8rem;
+  box-shadow: 0 4px 28px rgba(0,0,0,0.13);
 }
-.r-header { text-align: center; margin-bottom: 20px; border-bottom: 2.5px double #1a4f72; padding-bottom: 14px; }
-.r-clinic-en {
-  font-size: 0.72rem;
-  letter-spacing: 0.25em;
-  color: #1a4f72;
+
+/* Left vertical strip */
+.r-strip {
+  width: 36px;
+  min-width: 36px;
+  border-right: 1.5px solid #888;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 5px;
+  background: #fff;
+}
+.r-strip-zh {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.76rem;
   font-weight: 700;
-  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #111;
+  white-space: nowrap;
+}
+.r-strip-en {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.52rem;
+  color: #555;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
   font-family: 'Inter', sans-serif;
 }
-.r-clinic-zh { font-size: 1.05rem; font-weight: 700; color: #1a4f72; letter-spacing: 0.15em; margin-top: 2px; }
-.r-receipt-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: 0.4em;
-  color: #1a1a1a;
-  margin-top: 10px;
+
+/* Body */
+.r-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
-.r-info-row { display: flex; gap: 16px; margin-bottom: 16px; }
-.r-info-cell { flex: 1; border-bottom: 1px solid #999; padding-bottom: 4px; font-size: 0.9rem; }
-.r-label { color: #555; font-size: 0.82rem; }
-.r-value { font-weight: 600; }
 
-.r-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 0.88rem; }
-.r-table th { background: #edf2f6; color: #1a4f72; font-weight: 600; padding: 7px 10px; border: 1px solid #c8d4dc; letter-spacing: 0.04em; }
-.r-th-no  { width: 48px; text-align: center; }
-.r-th-amt { width: 130px; text-align: right; }
-.r-th-name { text-align: left; }
-.r-table td { padding: 7px 10px; border: 1px solid #dde; }
-.r-table tbody tr:nth-child(even) td { background: #fafbfc; }
-.r-table td:first-child { text-align: center; color: #888; }
-.r-table td:last-child { text-align: right; }
-.r-total-row td { background: #edf2f6 !important; border: 1px solid #c8d4dc; }
-.r-total-label { font-weight: 700; letter-spacing: 0.1em; padding: 8px 10px; }
-.r-total-val { font-weight: 700; font-size: 1.05rem; text-align: right; padding: 8px 10px; color: #1a4f72; }
+/* Top bar */
+.r-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 8px 14px 6px;
+}
+.r-addr {
+  font-size: 0.67rem;
+  color: #444;
+  line-height: 1.65;
+  font-family: 'Inter', sans-serif;
+}
+.r-no {
+  font-size: 2.1rem;
+  font-weight: 900;
+  color: #c0392b;
+  letter-spacing: 0.06em;
+  font-family: 'Courier New', monospace;
+  line-height: 1;
+  align-self: flex-end;
+}
 
-.r-notes { font-size: 0.8rem; color: #666; text-align: center; margin-bottom: 28px; letter-spacing: 0.05em; }
+/* Dividers */
+.r-hline { border: none; border-top: 1px solid #888; margin: 0; }
+.r-hline.r-hline-thick { border-top: 2.5px double #333; }
+.r-vline { width: 1px; background: #999; flex-shrink: 0; margin: 0 2px; }
 
-.r-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 8px; border-top: 1px solid #dde; padding-top: 16px; }
-.r-footer-left { font-size: 0.78rem; }
-.r-clinic-small { font-weight: 700; color: #1a4f72; margin-bottom: 2px; font-size: 0.84rem; }
-.r-clinic-addr { color: #666; line-height: 1.6; }
+/* Info bar */
+.r-infobar {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 5px 14px;
+  font-size: 0.82rem;
+}
+.r-uline {
+  border-bottom: 1px solid #333;
+  padding-bottom: 1px;
+  min-width: 90px;
+  display: inline-block;
+  font-weight: 600;
+}
+.r-datecell { font-size: 0.82rem; white-space: nowrap; }
 
-/* ── Print styles ── */
+/* Items area */
+.r-items-wrap {
+  display: flex;
+  flex: 1;
+  padding: 3px 0;
+  min-height: 160px;
+}
+.r-items-col {
+  flex: 1;
+  padding: 4px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.r-item-row {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 4px 0;
+  border-bottom: 1px dotted #ccc;
+  font-size: 0.77rem;
+  min-height: 28px;
+}
+.r-item-row:last-child { border-bottom: none; }
+.r-item-mark { width: 13px; flex-shrink: 0; text-align: center; font-weight: 700; }
+.r-item-mark-on  { color: #c0392b; }
+.r-item-mark-off { color: #aaa; }
+.r-item-name { flex: 1; }
+.r-item-name-en { font-size: 0.65em; color: #777; margin-left: 3px; font-family: 'Inter', sans-serif; }
+.r-item-amt     { min-width: 64px; text-align: right; font-weight: 600; font-family: 'Courier New', monospace; font-size: 0.8rem; }
+.r-item-amt-off { color: #ccc; }
+
+/* Footer */
+.r-ftr {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 14px 10px;
+  gap: 8px;
+}
+.r-ftr-total {
+  font-size: 0.86rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.r-total-val {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #c0392b;
+  font-family: 'Courier New', monospace;
+  min-width: 72px;
+  display: inline-block;
+  border-bottom: 1px solid #333;
+  text-align: right;
+  padding-bottom: 1px;
+}
+.r-ftr-pt {
+  text-align: center;
+  font-size: 0.74rem;
+  border-left: 1px solid #aaa;
+  padding-left: 12px;
+  min-width: 90px;
+}
+.r-ftr-pt-en   { font-size: 0.62rem; color: #666; font-family: 'Inter', sans-serif; }
+.r-ftr-pt-name { font-weight: 700; color: #1a4f72; margin-top: 3px; font-size: 0.8rem; }
+
+/* Print */
 @media print {
-  .no-print, nav, footer, .site-footer { display: none !important; }
-  body, .main-content { padding: 0 !important; margin: 0 !important; background: #fff !important; }
-  .container-fluid { padding: 0 !important; }
+  .no-print, nav, footer, .site-footer,
+  .navbar, .breadcrumb, #flash-messages { display: none !important; }
+  body, html { padding: 0 !important; margin: 0 !important; background: #fff !important; }
+  .container-fluid, .main-content, .row, .g-4,
+  .col-xl-8, .col-lg-7 {
+    all: unset;
+    display: block;
+  }
   .receipt-paper {
     box-shadow: none !important;
-    border: none !important;
-    max-width: 100% !important;
-    width: 148mm !important;
-    min-height: 210mm !important;
-    margin: 0 !important;
-    padding: 14mm 16mm !important;
+    border: 1px solid #888 !important;
+    width: 200mm !important;
+    height: 138mm !important;
+    max-width: 200mm !important;
+    margin: 0 auto !important;
+    font-size: 0.75rem !important;
   }
-  @page { size: A5 portrait; margin: 0; }
+  @page { size: A5 landscape; margin: 5mm; }
 }
 </style>
 
 <!-- ── Script ──────────────────────────────────────── -->
 <script>
-// Default fee items with preset amounts
-const DEFAULT_ITEMS = [
-  { name: '掛號費',   amt: 0,   preset: 150 },
-  { name: '診察費',   amt: 0,   preset: 500 },
-  { name: '物理治療費', amt: 0, preset: {{ appt.cost | int }} },
-  { name: '運動訓練費', amt: 0, preset: 0 },
-  { name: '儀器治療費', amt: 0, preset: 0 },
-  { name: '衛教費',   amt: 0,   preset: 0 },
-  { name: '處置費',   amt: 0,   preset: 0 },
-  { name: '其他',     amt: 0,   preset: 0, custom: true },
+const APPT_DATE = '{{ appt.date }}';
+const APPT_COST = {{ appt.cost | int }};
+
+// Default fee items
+let feeState = [
+  { name: '掛號費',    en: 'Registration Fee',      amt: 150,       preset: 150,       checked: false },
+  { name: '診察費',    en: 'Consultation Fee',       amt: 500,       preset: 500,       checked: false },
+  { name: '物理治療費', en: 'Physical Therapy Fee',  amt: APPT_COST, preset: APPT_COST, checked: true  },
+  { name: '運動訓練費', en: 'Exercise Training Fee', amt: 0,         preset: 0,         checked: false },
+  { name: '儀器治療費', en: 'Equipment Therapy Fee', amt: 0,         preset: 0,         checked: false },
+  { name: '衛教費',    en: 'Health Education Fee',  amt: 0,         preset: 0,         checked: false },
+  { name: '處置費',    en: 'Treatment Fee',          amt: 0,         preset: 0,         checked: false },
+  { name: '其他',      en: 'Others',                amt: 0,         preset: 0,         checked: false, custom: true },
 ];
 
-// State: array of {name, checked, amt, custom}
-let feeState = DEFAULT_ITEMS.map(i => ({
-  name: i.name,
-  checked: i.name === '物理治療費',
-  amt: i.name === '物理治療費' ? i.preset : i.preset,
-  preset: i.preset,
-  custom: i.custom || false,
-}));
-// Pre-fill 物理治療費 with appointment cost
-feeState.find(f => f.name === '物理治療費').amt = {{ appt.cost | int }};
+// Weekday label
+(function () {
+  const d = new Date(APPT_DATE + 'T00:00:00');
+  const days = ['日','一','二','三','四','五','六'];
+  const el = document.getElementById('r-wday');
+  if (el) el.textContent = '週' + days[d.getDay()];
+})();
 
 function renderSetup() {
   const el = document.getElementById('fee-items');
@@ -306,10 +370,13 @@ function renderSetup() {
       <input type="checkbox" class="fee-check" ${item.checked ? 'checked' : ''}
              onchange="toggleItem(${idx}, this.checked)">
       <span class="fee-name">${item.name}</span>
-      <input type="number" class="fee-amt" min="0" value="${item.checked ? item.amt : ''}"
+      <input type="number" class="fee-amt" min="0"
+             value="${item.checked ? item.amt : ''}"
              placeholder="金額" ${!item.checked ? 'disabled' : ''}
              oninput="setAmt(${idx}, this.value)">
-      ${item.custom ? `<button class="fee-del" onclick="removeItem(${idx})" title="刪除">✕</button>` : '<span style="width:18px"></span>'}
+      ${item.custom
+        ? `<button class="fee-del" onclick="removeItem(${idx})" title="刪除">✕</button>`
+        : '<span style="width:18px"></span>'}
     `;
     el.appendChild(row);
   });
@@ -337,48 +404,40 @@ function removeItem(idx) {
 let customCount = 0;
 function addCustomItem() {
   customCount++;
-  feeState.push({ name: '其他項目 ' + customCount, checked: true, amt: 0, preset: 0, custom: true });
+  feeState.push({
+    name: '其他項目 ' + customCount, en: 'Other ' + customCount,
+    checked: true, amt: 0, preset: 0, custom: true,
+  });
   renderSetup();
-  // Focus the new name — let user rename via the setup table (we keep it simple: name is static label)
 }
 
 function renderReceipt() {
-  const active = feeState.filter(f => f.checked);
-  const tbody = document.getElementById('r-tbody');
-  tbody.innerHTML = '';
-  let total = 0;
-  active.forEach((item, i) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${i + 1}</td>
-      <td>${item.name}</td>
-      <td>${item.amt.toLocaleString()}</td>
-    `;
-    tbody.appendChild(tr);
-    total += item.amt;
-  });
-  // Pad to at least 5 rows for aesthetics
-  for (let i = active.length; i < 5; i++) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = '<td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>';
-    tbody.appendChild(tr);
+  const half = Math.ceil(feeState.length / 2);
+  const left  = feeState.slice(0, half);
+  const right = feeState.slice(half);
+
+  function buildRows(items) {
+    return items.map(item => `
+      <div class="r-item-row">
+        <span class="r-item-mark ${item.checked ? 'r-item-mark-on' : 'r-item-mark-off'}">${item.checked ? '✓' : '□'}</span>
+        <span class="r-item-name">
+          ${item.name}<span class="r-item-name-en">${item.en}</span>
+        </span>
+        <span class="r-item-amt ${item.checked ? '' : 'r-item-amt-off'}">
+          ${item.checked ? 'NT$\u202F' + item.amt.toLocaleString() : '—'}
+        </span>
+      </div>
+    `).join('');
   }
+
+  document.getElementById('r-col-l').innerHTML = buildRows(left);
+  document.getElementById('r-col-r').innerHTML = buildRows(right);
+
+  const total = feeState.filter(f => f.checked).reduce((s, f) => s + f.amt, 0);
   document.getElementById('r-total').textContent = total.toLocaleString();
   document.getElementById('setup-total').textContent = 'NT$ ' + total.toLocaleString();
 }
 
-// ── Stamp date ──
-(function() {
-  const d = new Date('{{ appt.date }}T00:00:00');
-  const rocYear = d.getFullYear() - 1911;
-  const m = d.getMonth() + 1;
-  const day = d.getDate();
-  document.getElementById('stamp-line1').textContent = '民國';
-  document.getElementById('stamp-line2').textContent = rocYear + '年';
-  document.getElementById('stamp-line3').textContent = m + '月' + day + '日';
-})();
-
-// Init
 renderSetup();
 </script>
 
