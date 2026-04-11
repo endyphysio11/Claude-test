@@ -295,8 +295,17 @@ document.addEventListener('DOMContentLoaded', function () {
   // Inject now-indicator styles AFTER FullCalendar's own CSS so they win
   const nowStyle = document.createElement('style');
   nowStyle.textContent = `
+    .fc-timegrid-now-indicator-container {
+      overflow: visible !important;
+    }
     .fc-timegrid-now-indicator-line {
-      border-top: 3px solid #e8453c !important;
+      border-top: none !important;
+      height: 3px !important;
+      background-color: #e8453c !important;
+      margin-top: -1px !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      z-index: 9999 !important;
     }
     .fc-timegrid-now-indicator-arrow {
       border-width: 0 !important;
