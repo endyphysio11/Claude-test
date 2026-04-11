@@ -361,8 +361,7 @@ body {
 
 /* Now indicator — Google Calendar style (red line + small circle) */
 .fc .fc-timegrid-now-indicator-line {
-  border-color: #e8453c !important;
-  border-top-width: 3px !important;
+  border-top: 3px solid #e8453c !important;
 }
 .fc .fc-timegrid-now-indicator-arrow {
   border-width: 0 !important;
