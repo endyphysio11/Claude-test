@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-lg-5">
+
+    <div class="card shadow-sm">
+      <div class="card-header gold-header">
+        <p class="text-uppercase mb-0" style="font-size:0.65rem;letter-spacing:0.12em;color:var(--gold)">CHECKOUT</p>
+        <h6 class="mb-0 fw-semibold"><i class="bi bi-cash-coin me-1"></i>結帳</h6>
+      </div>
+      <div class="card-body">
+
+        <!-- 費用明細 -->
+        <div class="p-3 rounded mb-4" style="background:var(--gold-light)">
+          <div class="row g-2">
+            <div class="col-6">
+              <div class="small text-muted">個案</div>
+              <div class="fw-semibold">{{ appt.patient_name }}</div>
+            </div>
+            <div class="col-6">
+              <div class="small text-muted">治療師</div>
+              <div class="fw-semibold">{{ appt.therapist_name }}</div>
+            </div>
+            <div class="col-6">
+              <div class="small text-muted">日期</div>
+              <div>{{ appt.date }}</div>
+            </div>
+            <div class="col-6">
+              <div class="small text-muted">時間</div>
+              <div>{{ appt.start_time }}</div>
+            </div>
+          </div>
+          <hr class="my-2">
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">應收金額</span>
+            <span class="fw-bold fs-4" style="color:var(--brand-dark)">
+              NT$ {{ appt.cost | int }}
+            </span>
+          </div>
+        </div>
+
+        <!-- 付款方式 -->
+        <form method="post">
+          <div class="mb-4">
+            <label class="form-label fw-semibold">付款方式</label>
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="d-block" style="cursor:pointer">
+                  <input type="radio" name="payment_method" value="cash" class="visually-hidden pay-radio"
+                         {% if not appt.payment_method or appt.payment_method == 'cash' %}checked{% endif %}>
+                  <div class="pay-card text-center p-3 rounded border {% if not appt.payment_method or appt.payment_method == 'cash' %}selected{% endif %}"
+                       style="transition:all 0.15s">
+                    <i class="bi bi-cash-stack fs-3 d-block mb-1" style="color:var(--brand-dark)"></i>
+                    <div class="fw-semibold">現金</div>
+                  </div>
+                </label>
+              </div>
+              <div class="col-6">
+                <label class="d-block" style="cursor:pointer">
+                  <input type="radio" name="payment_method" value="transfer" class="visually-hidden pay-radio"
+                         {% if appt.payment_method == 'transfer' %}checked{% endif %}>
+                  <div class="pay-card text-center p-3 rounded border {% if appt.payment_method == 'transfer' %}selected{% endif %}"
+                       style="transition:all 0.15s">
+                    <i class="bi bi-bank fs-3 d-block mb-1" style="color:var(--brand-dark)"></i>
+                    <div class="fw-semibold">匯款</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="/calendar" class="btn btn-outline-secondary">
+              <i class="bi bi-x-lg me-1"></i>取消
+            </a>
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="bi bi-check-lg me-1"></i>確認收款
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+.pay-card { border-color: var(--border) !important; }
+.pay-card:hover { border-color: var(--gold) !important; background: var(--gold-light); }
+.pay-card.selected { border-color: var(--brand-dark) !important; background: var(--gold-light); }
+</style>
+
+<script>
+document.querySelectorAll('.pay-radio').forEach(radio => {
+  radio.addEventListener('change', function () {
+    document.querySelectorAll('.pay-card').forEach(c => c.classList.remove('selected'));
+    this.closest('label').querySelector('.pay-card').classList.add('selected');
+  });
+});
+</script>
+
+{% endblock %}

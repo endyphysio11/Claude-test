@@ -78,6 +78,9 @@
         <a id="modal-record-btn" href="#" class="btn btn-sm btn-outline-secondary">
           <i class="bi bi-file-earmark-plus me-1"></i>病歷
         </a>
+        <a id="modal-checkout-btn" href="#" class="btn btn-sm btn-warning text-dark">
+          <i class="bi bi-cash-coin me-1"></i>結帳
+        </a>
         <form id="modal-complete-form" method="post" class="m-0">
           <button type="submit" id="modal-complete-btn" class="btn btn-sm btn-success">
             <i class="bi bi-check-lg me-1"></i>完成
@@ -210,10 +213,24 @@ document.addEventListener('DOMContentLoaded', function () {
       const id = ev.id;
       document.getElementById('modal-edit-btn').href        = `/appointments/${id}/edit`;
       document.getElementById('modal-record-btn').href      = `/records/new?patient_id=${p.patient_id}&appointment_id=${id}`;
+      document.getElementById('modal-checkout-btn').href    = `/appointments/${id}/checkout`;
       document.getElementById('modal-complete-form').action = `/appointments/${id}/complete`;
       document.getElementById('modal-cancel-form').action   = `/appointments/${id}/cancel`;
+      // 完成：只在已預約時顯示
       document.getElementById('modal-complete-btn').closest('form').style.display =
         p.status === 'scheduled' ? '' : 'none';
+      // 結帳：取消的不顯示；已付款的顯示灰色
+      const checkoutBtn = document.getElementById('modal-checkout-btn');
+      if (p.status === 'cancelled') {
+        checkoutBtn.style.display = 'none';
+      } else if (p.payment_status === 'paid') {
+        checkoutBtn.className = 'btn btn-sm btn-outline-secondary disabled';
+        checkoutBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>已結帳';
+      } else {
+        checkoutBtn.style.display = '';
+        checkoutBtn.className = 'btn btn-sm btn-warning text-dark';
+        checkoutBtn.innerHTML = '<i class="bi bi-cash-coin me-1"></i>結帳';
+      }
 
       modal.show();
     },

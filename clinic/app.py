@@ -441,19 +441,49 @@ def cancel_appointment(appt_id):
 def complete_appointment(appt_id):
     conn = get_db()
     row = conn.execute(
-        "SELECT date, session_package_id FROM appointments WHERE id = ?", (appt_id,)
+        "SELECT date FROM appointments WHERE id = ?", (appt_id,)
     ).fetchone()
-    if row['session_package_id']:
-        conn.close()
-        return redirect(url_for('sign_appointment', appt_id=appt_id))
-    conn.execute(
-        "UPDATE appointments SET status='completed', payment_status='paid' WHERE id = ?",
-        (appt_id,)
-    )
+    conn.execute("UPDATE appointments SET status='completed' WHERE id = ?", (appt_id,))
     conn.commit()
     conn.close()
     flash('預約已標記為完成', 'success')
     return redirect(url_for('calendar_view', date=row['date']))
+
+
+@app.route('/appointments/<int:appt_id>/checkout', methods=['GET', 'POST'])
+def checkout_appointment(appt_id):
+    conn = get_db()
+    appt = conn.execute("""
+        SELECT a.*, p.name AS patient_name, t.name AS therapist_name
+        FROM appointments a
+        JOIN patients p ON a.patient_id = p.id
+        JOIN therapists t ON a.therapist_id = t.id
+        WHERE a.id = ?
+    """, (appt_id,)).fetchone()
+    if not appt:
+        conn.close()
+        flash('找不到預約', 'danger')
+        return redirect(url_for('calendar_view'))
+
+    # If session package → go to sign page
+    if appt['session_package_id']:
+        conn.close()
+        return redirect(url_for('sign_appointment', appt_id=appt_id))
+
+    if request.method == 'POST':
+        method = request.form.get('payment_method', appt['payment_method'] or 'cash')
+        conn.execute("""
+            UPDATE appointments
+            SET payment_method=?, payment_status='paid', status='completed'
+            WHERE id=?
+        """, (method, appt_id))
+        conn.commit()
+        conn.close()
+        flash('結帳完成，已記錄付款', 'success')
+        return redirect(url_for('calendar_view', date=appt['date']))
+
+    conn.close()
+    return render_template('checkout.html', appt=dict(appt))
 
 
 @app.route('/appointments/<int:appt_id>/sign', methods=['GET', 'POST'])
