@@ -533,6 +533,36 @@ def checkout_appointment(appt_id):
     return render_template('checkout.html', appt=dict(appt), packages=packages)
 
 
+@app.route('/appointments/<int:appt_id>/receipt')
+def receipt(appt_id):
+    conn = get_db()
+    appt = conn.execute("""
+        SELECT a.*, p.name AS patient_name, t.name AS therapist_name
+        FROM appointments a
+        JOIN patients p ON a.patient_id = p.id
+        JOIN therapists t ON a.therapist_id = t.id
+        WHERE a.id = ?
+    """, (appt_id,)).fetchone()
+    conn.close()
+    if not appt:
+        flash('找不到預約', 'danger')
+        return redirect(url_for('calendar_view'))
+    # Compute ROC date from appointment date
+    appt_date = appt['date']  # YYYY-MM-DD
+    try:
+        d = datetime.strptime(appt_date, '%Y-%m-%d')
+        roc_year  = d.year - 1911
+        roc_date  = f'民國 {roc_year} 年 {d.month} 月 {d.day} 日'
+        roc_short = f'{roc_year}.{d.month:02d}.{d.day:02d}'
+    except Exception:
+        roc_date  = appt_date
+        roc_short = appt_date
+    return render_template('receipt.html',
+                           appt=dict(appt),
+                           roc_date=roc_date,
+                           roc_short=roc_short)
+
+
 @app.route('/appointments/<int:appt_id>/sign', methods=['GET', 'POST'])
 def sign_appointment(appt_id):
     conn = get_db()
