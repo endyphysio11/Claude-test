@@ -164,6 +164,8 @@ def migrate_db():
         "ALTER TABLE appointments ADD COLUMN payment_status TEXT DEFAULT 'unpaid'",
         "ALTER TABLE appointments ADD COLUMN session_package_id INTEGER DEFAULT NULL",
         "ALTER TABLE appointments ADD COLUMN signature_data TEXT DEFAULT NULL",
+        "ALTER TABLE therapists ADD COLUMN work_start TEXT DEFAULT '09:00'",
+        "ALTER TABLE therapists ADD COLUMN work_end TEXT DEFAULT '18:00'",
     ]
     for sql in migrations:
         try:
@@ -236,7 +238,12 @@ def calendar_view():
     conn = get_db()
     therapists = conn.execute("SELECT * FROM therapists ORDER BY id").fetchall()
     conn.close()
-    return render_template('calendar.html', therapists=therapists)
+    schedules = [{
+        'name':  t['name'],
+        'start': t['work_start'] or '09:00',
+        'end':   t['work_end']   or '18:00',
+    } for t in therapists]
+    return render_template('calendar.html', therapists=therapists, schedules=schedules)
 
 
 @app.route('/appointments/api')
@@ -903,15 +910,18 @@ def therapist_settings():
 
     if request.method == 'POST':
         for t in therapists:
-            tid     = t['id']
-            base    = float(request.form.get(f'base_{tid}',   0) or 0)
-            c_type  = request.form.get(f'ctype_{tid}',  'percent')
-            c_value = float(request.form.get(f'cvalue_{tid}', 0) or 0)
+            tid        = t['id']
+            base       = float(request.form.get(f'base_{tid}',       0) or 0)
+            c_type     = request.form.get(f'ctype_{tid}',   'percent')
+            c_value    = float(request.form.get(f'cvalue_{tid}',    0) or 0)
+            work_start = request.form.get(f'wstart_{tid}', '09:00')
+            work_end   = request.form.get(f'wend_{tid}',   '18:00')
             conn.execute("""
                 UPDATE therapists
-                SET base_salary=?, commission_type=?, commission_value=?
+                SET base_salary=?, commission_type=?, commission_value=?,
+                    work_start=?, work_end=?
                 WHERE id=?
-            """, (base, c_type, c_value, tid))
+            """, (base, c_type, c_value, work_start, work_end, tid))
         conn.commit()
         conn.close()
         flash('薪資設定已更新', 'success')

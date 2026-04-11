@@ -64,6 +64,30 @@
                        value="{{ t.commission_value if t.commission_value else 0 }}"
                        placeholder="0">
               </div>
+
+              <!-- Work hours -->
+              <div class="col-sm-4">
+                <label class="form-label fw-semibold" style="font-size:0.82rem">
+                  <i class="bi bi-clock me-1" style="color:var(--gold)"></i>上班時間
+                </label>
+                <input type="time" name="wstart_{{ t.id }}" class="form-control"
+                       value="{{ t.work_start or '09:00' }}" step="1800">
+              </div>
+              <div class="col-sm-4">
+                <label class="form-label fw-semibold" style="font-size:0.82rem">
+                  <i class="bi bi-clock-history me-1" style="color:var(--gold)"></i>下班時間
+                </label>
+                <input type="time" name="wend_{{ t.id }}" class="form-control"
+                       value="{{ t.work_end or '18:00' }}" step="1800">
+              </div>
+              <div class="col-sm-4 d-flex align-items-end">
+                <div class="p-2 rounded w-100 text-center" style="background:var(--gold-light);font-size:0.8rem">
+                  <i class="bi bi-calendar3 me-1"></i>
+                  <span class="fw-semibold">{{ t.work_start or '09:00' }}</span>
+                  &nbsp;–&nbsp;
+                  <span class="fw-semibold">{{ t.work_end or '18:00' }}</span>
+                </div>
+              </div>
             </div>
 
             <!-- Preview formula -->
