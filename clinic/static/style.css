@@ -359,20 +359,20 @@ body {
 /* Non-business shade */
 .fc .fc-non-business { background: rgba(0,0,0,0.015); }
 
-/* Now indicator — Google Calendar style (thin red line + small circle) */
+/* Now indicator — Google Calendar style (red line + small circle) */
 .fc .fc-timegrid-now-indicator-line {
-  border-color: #e8453c;
-  border-top-width: 2px;
+  border-color: #e8453c !important;
+  border-top-width: 3px !important;
 }
 .fc .fc-timegrid-now-indicator-arrow {
   border-width: 0 !important;
   border-color: transparent !important;
   background-color: #e8453c;
   border-radius: 50%;
-  width: 10px;
-  height: 10px;
-  margin-top: -4px;
-  margin-left: -3px;
+  width: 12px;
+  height: 12px;
+  margin-top: -5px;
+  margin-left: -4px;
 }
 
 /* Events */
