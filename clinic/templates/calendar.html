@@ -126,7 +126,23 @@ document.addEventListener('DOMContentLoaded', function () {
       right:  'timeGridWeek,timeGridDay',
     },
     buttonText: { today: '今天', week: '週', day: '日' },
-    titleFormat: { year: 'numeric', month: 'long' },
+    titleFormat: function(info) {
+      const s  = new Date(info.start.marker);
+      const eX = new Date(info.end.marker);
+      const e  = new Date(eX.getTime() - 86400000); // exclusive → inclusive
+      const year = s.getFullYear();
+      const sm = s.getMonth() + 1, sd = s.getDate();
+      const em = e.getMonth() + 1, ed = e.getDate();
+      // Day view
+      if (s.toDateString() === e.toDateString()) {
+        return `${year}年${sm}月${sd}日`;
+      }
+      // Week view
+      const range = sm === em
+        ? `${sd}日 – ${ed}日`
+        : `${sm}月${sd}日 – ${em}月${ed}日`;
+      return `${year}年${sm}月　${range}`;
+    },
     dayHeaderFormat: { weekday: 'short', day: 'numeric' },
 
     // ── Time range ─────────────────────────────────────
