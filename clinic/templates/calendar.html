@@ -291,6 +291,25 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   calendar.render();
+
+  // Inject now-indicator styles AFTER FullCalendar's own CSS so they win
+  const nowStyle = document.createElement('style');
+  nowStyle.textContent = `
+    .fc-timegrid-now-indicator-line {
+      border-top: 3px solid #e8453c !important;
+    }
+    .fc-timegrid-now-indicator-arrow {
+      border-width: 0 !important;
+      border-color: transparent !important;
+      background-color: #e8453c !important;
+      border-radius: 50% !important;
+      width: 12px !important;
+      height: 12px !important;
+      margin-top: -5px !important;
+      margin-left: -4px !important;
+    }
+  `;
+  document.head.appendChild(nowStyle);
 });
 </script>
 {% endblock %}
