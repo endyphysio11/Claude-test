@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+
+    <div class="card shadow-sm mb-3">
+      <div class="card-header gold-header">
+        <p class="text-uppercase mb-0" style="font-size:0.65rem;letter-spacing:0.12em;color:var(--gold)">SESSION CHECKOUT</p>
+        <h6 class="mb-0 fw-semibold"><i class="bi bi-pen me-1"></i>銷課確認 — 請客戶簽名</h6>
+      </div>
+      <div class="card-body">
+
+        <!-- 預約資訊 -->
+        <div class="row g-3 mb-4 p-3 rounded" style="background:var(--gold-light)">
+          <div class="col-6">
+            <div class="small text-muted">個案</div>
+            <div class="fw-semibold">{{ appt.patient_name }}</div>
+          </div>
+          <div class="col-6">
+            <div class="small text-muted">治療師</div>
+            <div class="fw-semibold">{{ appt.therapist_name }}</div>
+          </div>
+          <div class="col-6">
+            <div class="small text-muted">日期</div>
+            <div>{{ appt.date }}</div>
+          </div>
+          <div class="col-6">
+            <div class="small text-muted">時間</div>
+            <div>{{ appt.start_time }}</div>
+          </div>
+          <div class="col-6">
+            <div class="small text-muted">費用</div>
+            <div class="fw-semibold">NT$ {{ appt.cost | int }}</div>
+          </div>
+        </div>
+
+        <!-- 堂數方案資訊 -->
+        {% if pkg %}
+        {% set remaining = pkg.total_sessions - pkg.used_sessions %}
+        <div class="mb-4 p-3 rounded border" style="border-color:var(--gold-mid)!important">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div>
+              <div class="fw-semibold" style="color:var(--brand-dark)">{{ pkg.package_type }}</div>
+              <div class="small text-muted">NT$ {{ pkg.price_per_session | int }} / 堂</div>
+            </div>
+            <div class="text-end">
+              <div class="small text-muted">目前剩餘堂數</div>
+              <div class="fw-bold fs-4" style="color:var(--brand-dark)">
+                {{ remaining }}
+                <span class="small fw-normal text-muted fs-6">/ {{ pkg.total_sessions }} 堂</span>
+              </div>
+            </div>
+          </div>
+          <!-- Progress bar -->
+          <div class="progress mb-2" style="height:8px;border-radius:4px">
+            <div class="progress-bar" role="progressbar"
+                 style="width:{{ (pkg.used_sessions / pkg.total_sessions * 100) | int }}%;background:var(--brand-dark)"
+                 aria-valuenow="{{ pkg.used_sessions }}"
+                 aria-valuemin="0" aria-valuemax="{{ pkg.total_sessions }}"></div>
+          </div>
+          <div class="small {% if remaining <= 1 %}text-danger fw-semibold{% else %}text-warning{% endif %}">
+            <i class="bi bi-info-circle me-1"></i>
+            簽名後將扣除 1 堂，剩餘 {{ remaining - 1 }} 堂
+            {% if remaining - 1 == 0 %}<strong>（本方案將用畢）</strong>{% endif %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- 簽名區域 -->
+        <div class="mb-4">
+          <label class="form-label fw-semibold">客戶簽名</label>
+          <div class="border rounded" style="background:#fff;border-color:var(--gold-mid)!important;overflow:hidden">
+            <canvas id="sig-canvas" width="600" height="200"
+                    style="width:100%;height:200px;display:block;cursor:crosshair;touch-action:none"></canvas>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mt-1">
+            <small class="text-muted">請在上方框內完成簽名</small>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSig()">
+              <i class="bi bi-eraser me-1"></i>清除
+            </button>
+          </div>
+        </div>
+
+        <form method="post" id="sign-form">
+          <input type="hidden" name="signature_data" id="sig-data">
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="/calendar" class="btn btn-outline-secondary">
+              <i class="bi bi-x-lg me-1"></i>取消
+            </a>
+            <button type="submit" class="btn btn-primary" onclick="return submitSig()">
+              <i class="bi bi-check-lg me-1"></i>確認簽名‧完成銷課
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('sig-canvas');
+const ctx    = canvas.getContext('2d');
+let drawing  = false;
+let lastX = 0, lastY = 0;
+
+function getPos(e) {
+  const rect   = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const src    = e.touches ? e.touches[0] : e;
+  return {
+    x: (src.clientX - rect.left) * scaleX,
+    y: (src.clientY - rect.top)  * scaleY,
+  };
+}
+
+function draw(x, y) {
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  ctx.lineTo(x, y);
+  ctx.strokeStyle = '#1a4f72';
+  ctx.lineWidth   = 2.5;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+  ctx.stroke();
+  [lastX, lastY] = [x, y];
+}
+
+canvas.addEventListener('mousedown', e => {
+  drawing = true;
+  const p = getPos(e); [lastX, lastY] = [p.x, p.y];
+});
+canvas.addEventListener('mousemove', e => {
+  if (!drawing) return;
+  const p = getPos(e); draw(p.x, p.y);
+});
+canvas.addEventListener('mouseup',    () => drawing = false);
+canvas.addEventListener('mouseleave', () => drawing = false);
+
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault(); drawing = true;
+  const p = getPos(e); [lastX, lastY] = [p.x, p.y];
+}, { passive: false });
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!drawing) return;
+  const p = getPos(e); draw(p.x, p.y);
+}, { passive: false });
+canvas.addEventListener('touchend', () => drawing = false);
+
+function clearSig() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function submitSig() {
+  const data   = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  const signed = data.some((v, i) => i % 4 === 3 && v > 0);
+  if (!signed) {
+    alert('請先在上方框內完成簽名後再送出');
+    return false;
+  }
+  document.getElementById('sig-data').value = canvas.toDataURL('image/png');
+  return true;
+}
+</script>
+
+{% endblock %}

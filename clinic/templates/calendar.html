@@ -57,6 +57,10 @@
             <span style="font-size:0.78rem;color:var(--text-muted)">費用</span>
             <span id="modal-cost" style="font-size:0.85rem"></span>
           </div>
+          <div class="d-flex justify-content-between">
+            <span style="font-size:0.78rem;color:var(--text-muted)">付款方式</span>
+            <span id="modal-payment" style="font-size:0.85rem"></span>
+          </div>
           <div id="modal-notes-row" class="d-flex justify-content-between" style="display:none!important">
             <span style="font-size:0.78rem;color:var(--text-muted)">備註</span>
             <span id="modal-notes" style="font-size:0.82rem;font-style:italic;color:var(--text-muted);text-align:right;max-width:220px"></span>
@@ -173,6 +177,12 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('modal-service').textContent   = SVC_NAMES[p.service_type] || '—';
       document.getElementById('modal-duration').textContent  = `${p.duration} 分鐘`;
       document.getElementById('modal-cost').textContent      = `NT$ ${p.cost.toLocaleString()}`;
+      const pmMap = { cash: '現金', transfer: '匯款', session: '使用堂數' };
+      const pmBadge = p.payment_status === 'paid'
+        ? '<span class="badge bg-success-subtle text-success-emphasis ms-1">已付</span>'
+        : '<span class="badge bg-warning-subtle text-warning-emphasis ms-1">待付</span>';
+      document.getElementById('modal-payment').innerHTML =
+        (pmMap[p.payment_method] || p.payment_method) + pmBadge;
 
       const notesRow = document.getElementById('modal-notes-row');
       if (p.notes) {

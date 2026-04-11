@@ -31,6 +31,11 @@ SERVICE_TYPES = [
     ('space_rental',  '場租',               [300]),
 ]
 
+PACKAGE_TYPES = [
+    ('10x2500', '10堂方案', 10, 2500),
+    ('20x2000', '20堂方案', 20, 2000),
+]
+
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -72,6 +77,17 @@ def init_db():
             is_designated   INTEGER DEFAULT 1,
             referral_source TEXT,
             created_at      TEXT DEFAULT (datetime('now','localtime'))
+        );
+        CREATE TABLE IF NOT EXISTS session_packages (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_id        INTEGER NOT NULL REFERENCES patients(id),
+            package_type      TEXT NOT NULL,
+            total_sessions    INTEGER NOT NULL,
+            used_sessions     INTEGER DEFAULT 0,
+            price_per_session REAL NOT NULL,
+            purchase_date     TEXT NOT NULL,
+            notes             TEXT,
+            created_at        TEXT DEFAULT (datetime('now','localtime'))
         );
         CREATE TABLE IF NOT EXISTS medical_records (
             id             INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -144,6 +160,10 @@ def migrate_db():
         "ALTER TABLE appointments ADD COLUMN is_designated INTEGER DEFAULT 1",
         "ALTER TABLE appointments ADD COLUMN referral_source TEXT",
         "ALTER TABLE appointments ADD COLUMN service_type TEXT DEFAULT 'full_treatment'",
+        "ALTER TABLE appointments ADD COLUMN payment_method TEXT DEFAULT 'cash'",
+        "ALTER TABLE appointments ADD COLUMN payment_status TEXT DEFAULT 'unpaid'",
+        "ALTER TABLE appointments ADD COLUMN session_package_id INTEGER DEFAULT NULL",
+        "ALTER TABLE appointments ADD COLUMN signature_data TEXT DEFAULT NULL",
     ]
     for sql in migrations:
         try:
@@ -270,14 +290,17 @@ def appointments_api():
             'borderColor':     border,
             'editable': a['status'] == 'scheduled',
             'extendedProps': {
-                'patient_id':     a['patient_id'],
-                'therapist_id':   a['therapist_id'],
-                'therapist_name': a['therapist_name'],
-                'cost':         int(a['cost']),
-                'duration':     a['duration'],
-                'notes':        a['notes'] or '',
-                'status':       a['status'],
-                'service_type': a['service_type'] or 'full_treatment',
+                'patient_id':          a['patient_id'],
+                'therapist_id':        a['therapist_id'],
+                'therapist_name':      a['therapist_name'],
+                'cost':                int(a['cost']),
+                'duration':            a['duration'],
+                'notes':               a['notes'] or '',
+                'status':              a['status'],
+                'service_type':        a['service_type'] or 'full_treatment',
+                'payment_method':      a['payment_method'] or 'cash',
+                'payment_status':      a['payment_status'] or 'unpaid',
+                'session_package_id':  a['session_package_id'],
             },
         })
     return jsonify(events)
@@ -315,17 +338,19 @@ def new_appointment():
 
     if request.method == 'POST':
         f = request.form
-        is_designated   = 1 if f.get('is_designated') == '1' else 0
-        referral_source = f.get('referral_source', '') if not is_designated else ''
+        is_designated      = 1 if f.get('is_designated') == '1' else 0
+        referral_source    = f.get('referral_source', '') if not is_designated else ''
+        payment_method     = f.get('payment_method', 'cash')
+        session_package_id = f.get('session_package_id') or None
         conn.execute("""
             INSERT INTO appointments
                 (patient_id, therapist_id, date, start_time, duration, cost, notes,
-                 is_designated, referral_source, service_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 is_designated, referral_source, service_type, payment_method, session_package_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (f['patient_id'], f['therapist_id'], f['date'],
               f['start_time'], int(f['duration']), float(f['cost'] or 0),
               f.get('notes', ''), is_designated, referral_source,
-              f.get('service_type', 'full_treatment')))
+              f.get('service_type', 'full_treatment'), payment_method, session_package_id))
         conn.commit()
         conn.close()
         flash('預約已新增', 'success')
@@ -340,6 +365,7 @@ def new_appointment():
         duration_options=DURATION_OPTIONS,
         referral_sources=REFERRAL_SOURCES,
         service_types=SERVICE_TYPES,
+        package_types=PACKAGE_TYPES,
         default_date=request.args.get('date', date.today().isoformat()),
         default_therapist=request.args.get('therapist_id', ''),
         default_time=request.args.get('start_time', ''),
@@ -355,24 +381,34 @@ def edit_appointment(appt_id):
 
     if request.method == 'POST':
         f = request.form
-        is_designated   = 1 if f.get('is_designated') == '1' else 0
-        referral_source = f.get('referral_source', '') if not is_designated else ''
+        is_designated      = 1 if f.get('is_designated') == '1' else 0
+        referral_source    = f.get('referral_source', '') if not is_designated else ''
+        payment_method     = f.get('payment_method', 'cash')
+        session_package_id = f.get('session_package_id') or None
         conn.execute("""
             UPDATE appointments
             SET patient_id=?, therapist_id=?, date=?, start_time=?,
                 duration=?, cost=?, status=?, notes=?,
-                is_designated=?, referral_source=?, service_type=?
+                is_designated=?, referral_source=?, service_type=?,
+                payment_method=?, session_package_id=?
             WHERE id=?
         """, (f['patient_id'], f['therapist_id'], f['date'],
               f['start_time'], int(f['duration']), float(f['cost'] or 0),
               f.get('status', 'scheduled'), f.get('notes', ''),
               is_designated, referral_source,
-              f.get('service_type', 'full_treatment'), appt_id))
+              f.get('service_type', 'full_treatment'),
+              payment_method, session_package_id, appt_id))
         conn.commit()
         conn.close()
         flash('預約已更新', 'success')
         return redirect(url_for('calendar_view', date=f['date']))
 
+    # Fetch existing packages for this patient (edit mode)
+    patient_packages = conn.execute("""
+        SELECT * FROM session_packages
+        WHERE patient_id = ? AND used_sessions < total_sessions
+        ORDER BY created_at
+    """, (appt['patient_id'],)).fetchall()
     conn.close()
     return render_template('appointment_form.html',
         therapists=therapists,
@@ -382,6 +418,8 @@ def edit_appointment(appt_id):
         duration_options=DURATION_OPTIONS,
         referral_sources=REFERRAL_SOURCES,
         service_types=SERVICE_TYPES,
+        package_types=PACKAGE_TYPES,
+        patient_packages=patient_packages,
         default_date=appt['date'],
         default_therapist=str(appt['therapist_id']),
         default_time=appt['start_time'],
@@ -402,12 +440,104 @@ def cancel_appointment(appt_id):
 @app.route('/appointments/<int:appt_id>/complete', methods=['POST'])
 def complete_appointment(appt_id):
     conn = get_db()
-    row = conn.execute("SELECT date FROM appointments WHERE id = ?", (appt_id,)).fetchone()
-    conn.execute("UPDATE appointments SET status='completed' WHERE id = ?", (appt_id,))
+    row = conn.execute(
+        "SELECT date, session_package_id FROM appointments WHERE id = ?", (appt_id,)
+    ).fetchone()
+    if row['session_package_id']:
+        conn.close()
+        return redirect(url_for('sign_appointment', appt_id=appt_id))
+    conn.execute(
+        "UPDATE appointments SET status='completed', payment_status='paid' WHERE id = ?",
+        (appt_id,)
+    )
     conn.commit()
     conn.close()
     flash('預約已標記為完成', 'success')
     return redirect(url_for('calendar_view', date=row['date']))
+
+
+@app.route('/appointments/<int:appt_id>/sign', methods=['GET', 'POST'])
+def sign_appointment(appt_id):
+    conn = get_db()
+    appt = conn.execute("""
+        SELECT a.*, p.name AS patient_name, t.name AS therapist_name
+        FROM appointments a
+        JOIN patients p ON a.patient_id = p.id
+        JOIN therapists t ON a.therapist_id = t.id
+        WHERE a.id = ?
+    """, (appt_id,)).fetchone()
+    if not appt:
+        conn.close()
+        flash('找不到預約', 'danger')
+        return redirect(url_for('calendar_view'))
+
+    pkg = None
+    if appt['session_package_id']:
+        pkg = conn.execute(
+            "SELECT * FROM session_packages WHERE id = ?", (appt['session_package_id'],)
+        ).fetchone()
+
+    if request.method == 'POST':
+        sig = request.form.get('signature_data', '')
+        conn.execute("""
+            UPDATE appointments
+            SET status='completed', payment_status='paid', signature_data=?
+            WHERE id=?
+        """, (sig, appt_id))
+        if appt['session_package_id']:
+            conn.execute(
+                "UPDATE session_packages SET used_sessions = used_sessions + 1 WHERE id=?",
+                (appt['session_package_id'],)
+            )
+        conn.commit()
+        conn.close()
+        flash('簽名完成，已銷課 1 堂', 'success')
+        return redirect(url_for('calendar_view', date=appt['date']))
+
+    conn.close()
+    return render_template('sign.html',
+        appt=dict(appt),
+        pkg=dict(pkg) if pkg else None,
+    )
+
+
+@app.route('/api/patients/<int:patient_id>/packages')
+def patient_packages_api(patient_id):
+    conn = get_db()
+    pkgs = conn.execute("""
+        SELECT * FROM session_packages
+        WHERE patient_id = ? AND used_sessions < total_sessions
+        ORDER BY created_at
+    """, (patient_id,)).fetchall()
+    conn.close()
+    return jsonify([{
+        'id':                p['id'],
+        'package_type':      p['package_type'],
+        'remaining':         p['total_sessions'] - p['used_sessions'],
+        'total':             p['total_sessions'],
+        'price_per_session': p['price_per_session'],
+        'purchase_date':     p['purchase_date'],
+    } for p in pkgs])
+
+
+@app.route('/patients/<int:patient_id>/packages/new', methods=['POST'])
+def new_package(patient_id):
+    f = request.form
+    pkg_type = f.get('package_type')
+    pkg_info = next((p for p in PACKAGE_TYPES if p[0] == pkg_type), None)
+    if pkg_info:
+        conn = get_db()
+        conn.execute("""
+            INSERT INTO session_packages
+                (patient_id, package_type, total_sessions, price_per_session, purchase_date, notes)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (patient_id, pkg_type, pkg_info[2], pkg_info[3],
+              f.get('purchase_date', date.today().isoformat()),
+              f.get('notes', '')))
+        conn.commit()
+        conn.close()
+        flash(f'已購買 {pkg_info[1]}（{pkg_info[2]}堂，每堂 NT${pkg_info[3]}）', 'success')
+    return redirect(url_for('patient_records', patient_id=patient_id))
 
 
 # ─── patients ────────────────────────────────────────────────────────────────
@@ -538,8 +668,14 @@ def patient_records(patient_id):
         WHERE mr.patient_id = ?
         ORDER BY mr.record_date DESC, mr.id DESC
     """, (patient_id,)).fetchall()
+    packages = conn.execute("""
+        SELECT * FROM session_packages WHERE patient_id = ? ORDER BY created_at DESC
+    """, (patient_id,)).fetchall()
     conn.close()
-    return render_template('patient_records.html', patient=patient, records=records)
+    return render_template('patient_records.html',
+        patient=patient, records=records, packages=packages,
+        package_types=PACKAGE_TYPES, today=date.today().isoformat()
+    )
 
 
 # ─── report ──────────────────────────────────────────────────────────────────

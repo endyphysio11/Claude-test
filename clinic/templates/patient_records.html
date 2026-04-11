@@ -22,6 +22,92 @@
   </div>
 </div>
 
+<!-- 堂數方案管理 -->
+<div class="card shadow-sm mb-4">
+  <div class="card-header gold-header d-flex align-items-center justify-content-between">
+    <div>
+      <p class="text-uppercase mb-0" style="font-size:0.65rem;letter-spacing:0.12em;color:var(--gold)">SESSION PACKAGES</p>
+      <h6 class="mb-0 fw-semibold">運動堂數方案</h6>
+    </div>
+    <button class="btn btn-sm btn-primary" type="button"
+            data-bs-toggle="collapse" data-bs-target="#buy-package-form">
+      <i class="bi bi-plus-lg me-1"></i>購買方案
+    </button>
+  </div>
+
+  <!-- 購買新方案 (collapsible) -->
+  <div class="collapse" id="buy-package-form">
+    <div class="card-body border-bottom" style="background:var(--gold-light)">
+      <form method="post" action="/patients/{{ patient.id }}/packages/new" class="row g-2 align-items-end">
+        <div class="col-sm-4">
+          <label class="form-label small fw-semibold mb-1">方案選擇</label>
+          <select name="package_type" class="form-select form-select-sm" required>
+            {% for val, label, sessions, price in package_types %}
+            <option value="{{ val }}">{{ label }}（{{ sessions }}堂 × NT${{ price }}）</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-sm-3">
+          <label class="form-label small fw-semibold mb-1">購買日期</label>
+          <input type="date" name="purchase_date" class="form-control form-control-sm"
+                 value="{{ today }}" required>
+        </div>
+        <div class="col-sm-3">
+          <label class="form-label small fw-semibold mb-1">備註</label>
+          <input type="text" name="notes" class="form-control form-control-sm" placeholder="選填">
+        </div>
+        <div class="col-sm-2">
+          <button type="submit" class="btn btn-sm btn-success w-100">確認購買</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card-body">
+    {% if packages %}
+    <div class="table-responsive">
+      <table class="table table-sm mb-0" style="font-size:0.85rem">
+        <thead>
+          <tr style="color:var(--text-muted)">
+            <th>方案</th>
+            <th>購買日期</th>
+            <th>已使用 / 總堂數</th>
+            <th>剩餘</th>
+            <th>每堂費用</th>
+            <th>狀態</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pkg in packages %}
+          {% set remaining = pkg.total_sessions - pkg.used_sessions %}
+          <tr>
+            <td class="fw-semibold">{{ pkg.package_type }}</td>
+            <td>{{ pkg.purchase_date }}</td>
+            <td>{{ pkg.used_sessions }} / {{ pkg.total_sessions }}</td>
+            <td>
+              <span class="fw-bold {% if remaining == 0 %}text-danger{% elif remaining <= 3 %}text-warning{% else %}text-success{% endif %}">
+                {{ remaining }} 堂
+              </span>
+            </td>
+            <td>NT$ {{ pkg.price_per_session | int }}</td>
+            <td>
+              {% if remaining == 0 %}
+              <span class="badge bg-secondary">已用畢</span>
+              {% else %}
+              <span class="badge bg-success-subtle text-success-emphasis">使用中</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0 small">尚無堂數方案記錄。</p>
+    {% endif %}
+  </div>
+</div>
+
 {% if not records %}
 <div class="alert alert-info">尚無病歷記錄。</div>
 {% endif %}
