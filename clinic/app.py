@@ -264,7 +264,7 @@ def appointments_api():
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
         JOIN therapists t ON a.therapist_id = t.id
-        WHERE a.date >= ? AND a.date < ?
+        WHERE a.date >= ? AND a.date < ? AND a.status != 'cancelled'
         ORDER BY a.date, a.start_time
     """, (start_str, end_str)).fetchall()
     conn.close()
