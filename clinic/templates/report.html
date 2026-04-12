@@ -125,18 +125,35 @@
       </div>
     </div>
 
-    <!-- Referral source breakdown (only if any non-designated) -->
-    {% if referral_breakdown %}
-    <div class="mb-3">
-      <div class="small fw-semibold text-muted mb-2">非指定個案來源</div>
-      <div class="d-flex flex-wrap gap-2">
-        {% for label, cnt in referral_breakdown %}
-        <span class="badge rounded-pill px-3 py-2"
-              style="background:var(--gold-light);color:var(--brand-dark);font-size:0.8rem;font-weight:600;border:1px solid var(--gold-mid)">
-          {{ label }}&ensp;<strong>{{ cnt }}</strong>
-        </span>
-        {% endfor %}
+    <!-- Referral source + assigned therapist breakdowns -->
+    {% if referral_breakdown or assigned_breakdown %}
+    <div class="row g-3 mb-3">
+      {% if referral_breakdown %}
+      <div class="col-md-6">
+        <div class="small fw-semibold text-muted mb-2">非指定個案來源</div>
+        <div class="d-flex flex-wrap gap-2">
+          {% for label, cnt in referral_breakdown %}
+          <span class="badge rounded-pill px-3 py-2"
+                style="background:var(--gold-light);color:var(--brand-dark);font-size:0.8rem;font-weight:600;border:1px solid var(--gold-mid)">
+            {{ label }}&ensp;<strong>{{ cnt }}</strong>
+          </span>
+          {% endfor %}
+        </div>
       </div>
+      {% endif %}
+      {% if assigned_breakdown %}
+      <div class="col-md-6">
+        <div class="small fw-semibold text-muted mb-2">非指定個案分派治療師</div>
+        <div class="d-flex flex-wrap gap-2">
+          {% for tname, cnt in assigned_breakdown %}
+          <span class="badge rounded-pill px-3 py-2"
+                style="background:#ede7f6;color:#4527a0;font-size:0.8rem;font-weight:600;border:1px solid #b39ddb">
+            {{ tname }}&ensp;<strong>{{ cnt }}</strong>
+          </span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
     </div>
     {% endif %}
 
@@ -148,6 +165,7 @@
             <th>姓名</th>
             <th class="text-center">來源</th>
             <th>渠道</th>
+            <th>分派治療師</th>
             <th>登記時間</th>
           </tr>
         </thead>
@@ -175,6 +193,11 @@
             <td class="text-muted">
               {% if not p.is_designated and p.referral_source %}
                 {{ referral_labels.get(p.referral_source, p.referral_source) }}
+              {% else %}—{% endif %}
+            </td>
+            <td class="text-muted">
+              {% if not p.is_designated and p.assigned_therapist_name %}
+                {{ p.assigned_therapist_name }}
               {% else %}—{% endif %}
             </td>
             <td class="text-muted">{{ p.created_at[:16] if p.created_at else '—' }}</td>

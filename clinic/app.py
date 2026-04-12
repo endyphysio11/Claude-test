@@ -218,6 +218,7 @@ def migrate_db():
         "ALTER TABLE therapists ADD COLUMN work_end TEXT DEFAULT '18:00'",
         "ALTER TABLE patients ADD COLUMN is_designated INTEGER DEFAULT 1",
         "ALTER TABLE patients ADD COLUMN referral_source TEXT",
+        "ALTER TABLE patients ADD COLUMN assigned_therapist_id INTEGER DEFAULT NULL",
     ]
     for sql in migrations:
         try:
@@ -728,46 +729,58 @@ def patients():
 
 @app.route('/patients/new', methods=['GET', 'POST'])
 def new_patient():
+    conn = get_db()
+    therapists = conn.execute("SELECT id, name FROM therapists ORDER BY id").fetchall()
     if request.method == 'POST':
         f = request.form
-        is_designated   = 1 if f.get('is_designated') == '1' else 0
-        referral_source = f.get('referral_source', '') if not is_designated else ''
-        conn = get_db()
+        is_designated         = 1 if f.get('is_designated') == '1' else 0
+        referral_source       = f.get('referral_source', '') if not is_designated else ''
+        assigned_therapist_id = f.get('assigned_therapist_id') if not is_designated else None
+        if assigned_therapist_id == '':
+            assigned_therapist_id = None
         conn.execute("""
             INSERT INTO patients (name, phone, birth_date, gender, address, emergency_contact, notes,
-                                  is_designated, referral_source)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                  is_designated, referral_source, assigned_therapist_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (f['name'], f.get('phone',''), f.get('birth_date',''), f.get('gender',''),
               f.get('address',''), f.get('emergency_contact',''), f.get('notes',''),
-              is_designated, referral_source))
+              is_designated, referral_source, assigned_therapist_id))
         conn.commit()
         conn.close()
         flash('個案已新增', 'success')
         return redirect(url_for('patients'))
-    return render_template('patient_form.html', patient=None, referral_sources=REFERRAL_SOURCES)
+    conn.close()
+    return render_template('patient_form.html', patient=None,
+                           referral_sources=REFERRAL_SOURCES, therapists=therapists)
 
 
 @app.route('/patients/<int:patient_id>/edit', methods=['GET', 'POST'])
 def edit_patient(patient_id):
     conn = get_db()
-    patient = dict(conn.execute("SELECT * FROM patients WHERE id = ?", (patient_id,)).fetchone())
+    patient    = dict(conn.execute("SELECT * FROM patients WHERE id = ?", (patient_id,)).fetchone())
+    therapists = conn.execute("SELECT id, name FROM therapists ORDER BY id").fetchall()
     if request.method == 'POST':
         f = request.form
-        is_designated   = 1 if f.get('is_designated') == '1' else 0
-        referral_source = f.get('referral_source', '') if not is_designated else ''
+        is_designated         = 1 if f.get('is_designated') == '1' else 0
+        referral_source       = f.get('referral_source', '') if not is_designated else ''
+        assigned_therapist_id = f.get('assigned_therapist_id') if not is_designated else None
+        if assigned_therapist_id == '':
+            assigned_therapist_id = None
         conn.execute("""
             UPDATE patients SET name=?, phone=?, birth_date=?, gender=?,
-            address=?, emergency_contact=?, notes=?, is_designated=?, referral_source=?
+            address=?, emergency_contact=?, notes=?, is_designated=?, referral_source=?,
+            assigned_therapist_id=?
             WHERE id=?
         """, (f['name'], f.get('phone',''), f.get('birth_date',''), f.get('gender',''),
               f.get('address',''), f.get('emergency_contact',''), f.get('notes',''),
-              is_designated, referral_source, patient_id))
+              is_designated, referral_source, assigned_therapist_id, patient_id))
         conn.commit()
         conn.close()
         flash('個案資料已更新', 'success')
         return redirect(url_for('patients'))
     conn.close()
-    return render_template('patient_form.html', patient=patient, referral_sources=REFERRAL_SOURCES)
+    return render_template('patient_form.html', patient=patient,
+                           referral_sources=REFERRAL_SOURCES, therapists=therapists)
 
 
 # ─── medical records ─────────────────────────────────────────────────────────
@@ -1033,23 +1046,35 @@ def report():
 
     # New patients registered in this period
     new_patient_rows = conn.execute("""
-        SELECT * FROM patients
-        WHERE DATE(created_at) >= ? AND DATE(created_at) <= ?
-        ORDER BY created_at
+        SELECT p.*, t.name AS assigned_therapist_name
+        FROM patients p
+        LEFT JOIN therapists t ON p.assigned_therapist_id = t.id
+        WHERE DATE(p.created_at) >= ? AND DATE(p.created_at) <= ?
+        ORDER BY p.created_at
     """, (date_from.isoformat(), date_to.isoformat())).fetchall()
     conn.close()
 
     new_patients_count   = len(new_patient_rows)
     new_designated       = sum(1 for p in new_patient_rows if p['is_designated'] != 0)
     new_not_designated   = sum(1 for p in new_patient_rows if p['is_designated'] == 0)
-    referral_breakdown   = defaultdict(int)
+
     referral_label_map   = dict(REFERRAL_SOURCES)
+    referral_breakdown   = defaultdict(int)
+    assigned_breakdown   = defaultdict(int)
     for p in new_patient_rows:
-        if p['is_designated'] == 0 and p['referral_source']:
-            referral_breakdown[p['referral_source']] += 1
+        if p['is_designated'] == 0:
+            if p['referral_source']:
+                referral_breakdown[p['referral_source']] += 1
+            name = p['assigned_therapist_name'] or '未分派'
+            assigned_breakdown[name] += 1
+
     referral_breakdown_labeled = [
         (referral_label_map.get(k, k), v)
         for k, v in sorted(referral_breakdown.items(), key=lambda x: -x[1])
+    ]
+    assigned_breakdown_labeled = [
+        (k, v)
+        for k, v in sorted(assigned_breakdown.items(), key=lambda x: -x[1])
     ]
 
     active  = [a for a in rows if a['status'] != 'cancelled']
@@ -1123,6 +1148,7 @@ def report():
         new_designated=new_designated,
         new_not_designated=new_not_designated,
         referral_breakdown=referral_breakdown_labeled,
+        assigned_breakdown=assigned_breakdown_labeled,
         new_patient_rows=new_patient_rows,
     )
 

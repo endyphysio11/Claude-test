@@ -93,15 +93,26 @@
               </div>
               <div id="referral_row"
                    {% if not patient or patient.get('is_designated', 1) != 0 %}style="display:none"{% endif %}>
-                <select name="referral_source" class="form-select" style="max-width:280px">
-                  <option value="">— 請選擇來源渠道 —</option>
-                  {% for val, label in referral_sources %}
-                  <option value="{{ val }}"
-                    {% if patient and patient.get('referral_source') == val %}selected{% endif %}>
-                    {{ label }}
-                  </option>
-                  {% endfor %}
-                </select>
+                <div class="d-flex flex-wrap gap-2">
+                  <select name="referral_source" class="form-select" style="max-width:280px">
+                    <option value="">— 請選擇來源渠道 —</option>
+                    {% for val, label in referral_sources %}
+                    <option value="{{ val }}"
+                      {% if patient and patient.get('referral_source') == val %}selected{% endif %}>
+                      {{ label }}
+                    </option>
+                    {% endfor %}
+                  </select>
+                  <select name="assigned_therapist_id" class="form-select" style="max-width:200px">
+                    <option value="">— 分派治療師 —</option>
+                    {% for t in therapists %}
+                    <option value="{{ t.id }}"
+                      {% if patient and patient.get('assigned_therapist_id') == t.id %}selected{% endif %}>
+                      {{ t.name }}
+                    </option>
+                    {% endfor %}
+                  </select>
+                </div>
               </div>
             </div>
 
