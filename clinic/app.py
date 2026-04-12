@@ -216,6 +216,8 @@ def migrate_db():
         "ALTER TABLE appointments ADD COLUMN signature_data TEXT DEFAULT NULL",
         "ALTER TABLE therapists ADD COLUMN work_start TEXT DEFAULT '09:00'",
         "ALTER TABLE therapists ADD COLUMN work_end TEXT DEFAULT '18:00'",
+        "ALTER TABLE patients ADD COLUMN is_designated INTEGER DEFAULT 1",
+        "ALTER TABLE patients ADD COLUMN referral_source TEXT",
     ]
     for sql in migrations:
         try:
@@ -728,17 +730,21 @@ def patients():
 def new_patient():
     if request.method == 'POST':
         f = request.form
+        is_designated   = 1 if f.get('is_designated') == '1' else 0
+        referral_source = f.get('referral_source', '') if not is_designated else ''
         conn = get_db()
         conn.execute("""
-            INSERT INTO patients (name, phone, birth_date, gender, address, emergency_contact, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO patients (name, phone, birth_date, gender, address, emergency_contact, notes,
+                                  is_designated, referral_source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (f['name'], f.get('phone',''), f.get('birth_date',''), f.get('gender',''),
-              f.get('address',''), f.get('emergency_contact',''), f.get('notes','')))
+              f.get('address',''), f.get('emergency_contact',''), f.get('notes',''),
+              is_designated, referral_source))
         conn.commit()
         conn.close()
         flash('個案已新增', 'success')
         return redirect(url_for('patients'))
-    return render_template('patient_form.html', patient=None)
+    return render_template('patient_form.html', patient=None, referral_sources=REFERRAL_SOURCES)
 
 
 @app.route('/patients/<int:patient_id>/edit', methods=['GET', 'POST'])
@@ -747,17 +753,21 @@ def edit_patient(patient_id):
     patient = dict(conn.execute("SELECT * FROM patients WHERE id = ?", (patient_id,)).fetchone())
     if request.method == 'POST':
         f = request.form
+        is_designated   = 1 if f.get('is_designated') == '1' else 0
+        referral_source = f.get('referral_source', '') if not is_designated else ''
         conn.execute("""
             UPDATE patients SET name=?, phone=?, birth_date=?, gender=?,
-            address=?, emergency_contact=?, notes=? WHERE id=?
+            address=?, emergency_contact=?, notes=?, is_designated=?, referral_source=?
+            WHERE id=?
         """, (f['name'], f.get('phone',''), f.get('birth_date',''), f.get('gender',''),
-              f.get('address',''), f.get('emergency_contact',''), f.get('notes',''), patient_id))
+              f.get('address',''), f.get('emergency_contact',''), f.get('notes',''),
+              is_designated, referral_source, patient_id))
         conn.commit()
         conn.close()
         flash('個案資料已更新', 'success')
         return redirect(url_for('patients'))
     conn.close()
-    return render_template('patient_form.html', patient=patient)
+    return render_template('patient_form.html', patient=patient, referral_sources=REFERRAL_SOURCES)
 
 
 # ─── medical records ─────────────────────────────────────────────────────────
@@ -1020,7 +1030,27 @@ def report():
         WHERE a.date >= ? AND a.date <= ?
         ORDER BY a.date, a.therapist_id, a.start_time
     """, (date_from.isoformat(), date_to.isoformat())).fetchall()
+
+    # New patients registered in this period
+    new_patient_rows = conn.execute("""
+        SELECT * FROM patients
+        WHERE DATE(created_at) >= ? AND DATE(created_at) <= ?
+        ORDER BY created_at
+    """, (date_from.isoformat(), date_to.isoformat())).fetchall()
     conn.close()
+
+    new_patients_count   = len(new_patient_rows)
+    new_designated       = sum(1 for p in new_patient_rows if p['is_designated'] != 0)
+    new_not_designated   = sum(1 for p in new_patient_rows if p['is_designated'] == 0)
+    referral_breakdown   = defaultdict(int)
+    referral_label_map   = dict(REFERRAL_SOURCES)
+    for p in new_patient_rows:
+        if p['is_designated'] == 0 and p['referral_source']:
+            referral_breakdown[p['referral_source']] += 1
+    referral_breakdown_labeled = [
+        (referral_label_map.get(k, k), v)
+        for k, v in sorted(referral_breakdown.items(), key=lambda x: -x[1])
+    ]
 
     active  = [a for a in rows if a['status'] != 'cancelled']
     revenue = sum(a['cost'] for a in rows if a['status'] == 'completed')
@@ -1089,6 +1119,11 @@ def report():
         weekday=WEEKDAY_ZH[anchor.weekday()],
         daily_breakdown=daily_breakdown,
         monthly_breakdown=monthly_breakdown,
+        new_patients_count=new_patients_count,
+        new_designated=new_designated,
+        new_not_designated=new_not_designated,
+        referral_breakdown=referral_breakdown_labeled,
+        new_patient_rows=new_patient_rows,
     )
 
 

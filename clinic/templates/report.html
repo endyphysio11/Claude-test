@@ -89,6 +89,104 @@
   </div>
 </div>
 
+<!-- ── New patients section ─────────────────────────────────────────────── -->
+<div class="card shadow-sm mb-4">
+  <div class="card-header fw-semibold">
+    <i class="bi bi-person-plus me-1"></i>新個案統計
+    {% if new_patients_count > 0 %}
+    <span class="badge ms-2" style="background:var(--brand-dark)">{{ new_patients_count }} 人</span>
+    {% endif %}
+  </div>
+  {% if new_patients_count == 0 %}
+  <div class="card-body text-muted text-center py-3" style="font-size:0.85rem">
+    此期間無新個案
+  </div>
+  {% else %}
+  <div class="card-body">
+    <!-- 指定 vs 非指定 stat row -->
+    <div class="row g-3 mb-3">
+      <div class="col-4">
+        <div class="text-center p-3 rounded" style="background:var(--gold-light)">
+          <div class="fw-bold fs-4" style="color:var(--brand-dark)">{{ new_patients_count }}</div>
+          <div class="small text-muted">新個案總數</div>
+        </div>
+      </div>
+      <div class="col-4">
+        <div class="text-center p-3 rounded" style="background:#e8f5e9">
+          <div class="fw-bold fs-4" style="color:#2e7d32">{{ new_designated }}</div>
+          <div class="small text-muted">指定治療師</div>
+        </div>
+      </div>
+      <div class="col-4">
+        <div class="text-center p-3 rounded" style="background:#fff8e1">
+          <div class="fw-bold fs-4" style="color:#f57f17">{{ new_not_designated }}</div>
+          <div class="small text-muted">非指定治療師</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Referral source breakdown (only if any non-designated) -->
+    {% if referral_breakdown %}
+    <div class="mb-3">
+      <div class="small fw-semibold text-muted mb-2">非指定個案來源</div>
+      <div class="d-flex flex-wrap gap-2">
+        {% for label, cnt in referral_breakdown %}
+        <span class="badge rounded-pill px-3 py-2"
+              style="background:var(--gold-light);color:var(--brand-dark);font-size:0.8rem;font-weight:600;border:1px solid var(--gold-mid)">
+          {{ label }}&ensp;<strong>{{ cnt }}</strong>
+        </span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- New patients list -->
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0" style="font-size:0.82rem">
+        <thead class="table-light">
+          <tr>
+            <th>姓名</th>
+            <th class="text-center">來源</th>
+            <th>渠道</th>
+            <th>登記時間</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set referral_labels = {
+            'online_search': '網路搜尋',
+            'social_media': '社群媒體',
+            'friend_referral': '親友介紹',
+            'therapist_referral': '治療師介紹',
+            'walk_in': '路過/自然到訪',
+            'other': '其他'
+          } %}
+          {% for p in new_patient_rows %}
+          <tr>
+            <td class="fw-semibold">
+              <a href="/patients/{{ p.id }}/records" class="text-decoration-none">{{ p.name }}</a>
+            </td>
+            <td class="text-center">
+              {% if p.is_designated %}
+              <span class="badge" style="background:#e8f5e9;color:#2e7d32">指定</span>
+              {% else %}
+              <span class="badge" style="background:#fff8e1;color:#f57f17">非指定</span>
+              {% endif %}
+            </td>
+            <td class="text-muted">
+              {% if not p.is_designated and p.referral_source %}
+                {{ referral_labels.get(p.referral_source, p.referral_source) }}
+              {% else %}—{% endif %}
+            </td>
+            <td class="text-muted">{{ p.created_at[:16] if p.created_at else '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
 <!-- ── YEAR view: monthly breakdown table ───────────────────────────────── -->
 {% if period == 'year' %}
 <div class="card shadow-sm mb-4">
