@@ -69,295 +69,231 @@
       <i class="bi bi-eye me-1"></i>預覽（列印時不含此提示）
     </div>
 
-    <div id="receipt-paper" class="receipt-paper mx-auto">
+    <div class="receipt" id="receipt-paper">
 
-      <!-- Left vertical title strip -->
-      <div class="r-strip">
-        <div class="r-strip-zh">鉑&emsp;適&emsp;物&emsp;理&emsp;治&emsp;療&emsp;所&emsp;&emsp;&emsp;治&emsp;療&emsp;收&emsp;據</div>
-        <div class="r-strip-en">The Platinum Physical Therapy &amp; Wellness Center</div>
+      <!-- Header -->
+      <div class="r-header">
+        <div class="r-spacer"></div>
+        <div class="r-title-block">
+          <div class="r-title">鉑適物理治療　治療收據</div>
+          <div class="r-subtitle">The Platinum Physical Therapy and Wellness Center</div>
+        </div>
+        <div class="r-right-info">
+          <div class="r-receipt-num">{{ '%06d' % appt.id }}</div>
+        </div>
       </div>
 
-      <!-- Main body -->
-      <div class="r-body">
-
-        <!-- Top: address left, receipt number right -->
-        <div class="r-top">
-          <div class="r-addr">
-            台北市大安區安和路一段 79 號<br>
-            電話：(02)&thinsp;2758-3285
-          </div>
-          <div class="r-no">{{ '%06d' % appt.id }}</div>
+      <!-- Patient info row -->
+      <div class="r-patient">
+        <div class="r-field">
+          姓名 Name&nbsp;
+          <span class="r-field-value">{{ appt.patient_name }}</span>
         </div>
-
-        <div class="r-hline r-hline-thick"></div>
-
-        <!-- Patient name + ROC date + notes -->
-        <div class="r-infobar">
-          <div>
-            姓名 Name：<span class="r-uline">{{ appt.patient_name }}</span>
-          </div>
-          <div class="r-datecell">
-            年(Y)&thinsp;<span class="r-uline-sm">{{ roc_year }}</span>&emsp;
-            月(M)&thinsp;<span class="r-uline-sm">{{ appt.date[5:7] | int }}</span>&emsp;
-            日(D)&thinsp;<span class="r-uline-sm">{{ appt.date[8:10] | int }}</span>
-          </div>
+        <div class="r-date-group">
+          日期 Date&nbsp;
+          <span class="r-date-val">{{ roc_year }}</span>年(Y)&nbsp;
+          <span class="r-date-val">{{ appt.date[5:7] | int }}</span>月(M)&nbsp;
+          <span class="r-date-val">{{ appt.date[8:10] | int }}</span>日(D)
         </div>
-        <div class="r-notebar">
-          備註：<span class="r-uline-long" id="r-notes"></span>
-        </div>
+      </div>
 
-        <div class="r-hline"></div>
+      <!-- Items table -->
+      <table class="r-table">
+        <colgroup>
+          <col style="width:39%">
+          <col style="width:39%">
+          <col style="width:22%">
+        </colgroup>
+        <thead>
+          <tr>
+            <th colspan="2">項目</th>
+            <th class="stamp-th">治療所印章<br>Clinic Stamp</th>
+          </tr>
+        </thead>
+        <tbody id="r-tbody"></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2" class="r-amount-cell">
+              <div class="r-amount-content">
+                <div class="r-amount-cn" id="r-amount-cn">合計新台幣</div>
+                <div class="r-amount-ntd">Total Payment NTD.&nbsp;<strong id="r-total">{{ appt.cost | int }}</strong></div>
+              </div>
+            </td>
+            <td class="stamp-col-therapist"></td>
+          </tr>
+        </tfoot>
+      </table>
 
-        <!-- Two-column treatment items -->
-        <div class="r-items-wrap">
-          <div class="r-items-col" id="r-col-l"></div>
-          <div class="r-vline"></div>
-          <div class="r-items-col" id="r-col-r"></div>
-        </div>
-
-        <div class="r-hline"></div>
-
-        <!-- Footer: total + therapist + stamp -->
-        <div class="r-ftr">
-          <div class="r-ftr-total">
-            Total Payment NTD&ensp;
-            <span class="r-total-val" id="r-total">{{ appt.cost | int }}</span>
-            &ensp;元整
-          </div>
-          <div class="r-ftr-right">
-            <div class="r-ftr-pt">
-              <div>物理治療師</div>
-              <div class="r-ftr-pt-en">Physical Therapist</div>
-              <div class="r-ftr-pt-name">{{ appt.therapist_name }}</div>
-            </div>
-            <div class="r-stamp-box">
-              <div class="r-stamp-label">章</div>
-            </div>
-          </div>
-        </div>
-
-      </div><!-- /r-body -->
-    </div><!-- /receipt-paper -->
+    </div><!-- /receipt -->
   </div>
 
 </div><!-- /row -->
 
 <!-- ── Styles ─────────────────────────────────────── -->
 <style>
-/* Setup panel */
+/* Setup panel checkboxes */
 .treat-row {
   display: flex; align-items: center; gap: 6px;
   padding: 4px 0; font-size: 0.83rem;
 }
 .treat-check { width: 15px; height: 15px; accent-color: var(--brand-dark); cursor: pointer; flex-shrink: 0; }
 
-/* Receipt paper — landscape proportions */
-.receipt-paper {
-  display: flex;
+/* ===== THE RECEIPT ===== */
+.receipt {
+  background: white;
   width: 100%;
-  max-width: 760px;
-  min-height: 400px;
-  background: #fff;
-  border: 1.5px solid #888;
-  font-family: 'Noto Serif TC', 'Times New Roman', serif;
+  max-width: 720px;
+  padding: 16px 20px 18px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  font-family: 'Noto Serif TC', 'PMingLiU', '新細明體', serif;
   font-size: 0.8rem;
-  box-shadow: 0 4px 28px rgba(0,0,0,0.13);
+  margin: 0 auto;
 }
 
-/* Left vertical strip */
-.r-strip {
-  width: 36px;
-  min-width: 36px;
-  border-right: 1.5px solid #888;
+/* Header */
+.r-header {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 10px 5px;
-  background: #fff;
-}
-.r-strip-zh {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  color: #111;
-  white-space: nowrap;
-}
-.r-strip-en {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  font-size: 0.52rem;
-  color: #555;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  font-family: 'Inter', sans-serif;
-}
-
-/* Body */
-.r-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Top bar */
-.r-top {
-  display: flex;
-  justify-content: space-between;
   align-items: flex-start;
-  padding: 8px 14px 6px;
+  margin-bottom: 7px;
 }
-.r-addr {
-  font-size: 0.67rem;
-  color: #444;
-  line-height: 1.65;
-  font-family: 'Inter', sans-serif;
+.r-spacer { flex: 1; }
+.r-title-block { flex: 2.2; text-align: center; }
+.r-title {
+  font-size: 18px; font-weight: 700;
+  letter-spacing: 3px; color: #111;
 }
-.r-no {
-  font-size: 2.1rem;
-  font-weight: 900;
-  color: #c0392b;
-  letter-spacing: 0.06em;
+.r-subtitle {
+  font-size: 9.5px; letter-spacing: 0.5px;
+  margin-top: 3px; color: #444;
+}
+.r-right-info { flex: 1; text-align: right; }
+.r-receipt-num {
+  font-size: 22px; font-weight: 700;
+  color: #CC0000;
   font-family: 'Courier New', monospace;
-  line-height: 1;
-  align-self: flex-end;
+  letter-spacing: 2px;
 }
 
-/* Dividers */
-.r-hline { border: none; border-top: 1px solid #888; margin: 0; }
-.r-hline.r-hline-thick { border-top: 2.5px double #333; }
-.r-vline { width: 1px; background: #999; flex-shrink: 0; }
-
-/* Info bar */
-.r-infobar {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding: 4px 14px 2px;
-  font-size: 0.81rem;
-}
-.r-notebar {
-  padding: 2px 14px 4px;
-  font-size: 0.78rem;
-  color: #444;
-}
-.r-uline {
-  border-bottom: 1px solid #333;
-  padding-bottom: 1px;
-  min-width: 90px;
-  display: inline-block;
-  font-weight: 600;
-}
-.r-uline-sm {
-  border-bottom: 1px solid #333;
-  padding-bottom: 1px;
-  min-width: 28px;
-  display: inline-block;
-  text-align: center;
-  font-weight: 600;
-}
-.r-uline-long {
-  border-bottom: 1px solid #aaa;
-  padding-bottom: 1px;
-  min-width: 200px;
-  display: inline-block;
-}
-.r-datecell { font-size: 0.78rem; white-space: nowrap; }
-
-/* Items area */
-.r-items-wrap {
-  display: flex;
-  flex: 1;
-  padding: 2px 0;
-  min-height: 170px;
-}
-.r-items-col {
-  flex: 1;
-  padding: 3px 10px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-around;
-}
-.r-item-row {
+/* Patient row */
+.r-patient {
   display: flex;
   align-items: baseline;
-  gap: 4px;
-  padding: 3px 0;
-  font-size: 0.76rem;
-  border-bottom: 1px dotted #ddd;
+  gap: 6px;
+  padding: 5px 0;
+  border-top: 1.5px solid #444;
+  border-bottom: 1.5px solid #444;
+  margin-bottom: 6px;
+  font-size: 12px;
 }
-.r-item-row:last-child { border-bottom: none; }
-.r-item-mark { width: 13px; flex-shrink: 0; text-align: center; font-weight: 700; }
-.r-item-mark-on  { color: #c0392b; }
-.r-item-mark-off { color: #aaa; }
-.r-item-name-zh  { font-weight: 500; }
-.r-item-name-en  { font-size: 0.65em; color: #666; margin-left: 4px; font-family: 'Inter', sans-serif; }
+.r-field { display: flex; align-items: baseline; gap: 3px; }
+.r-field-value {
+  border-bottom: 1px solid #555;
+  min-width: 80px; padding: 0 4px;
+  display: inline-block; text-align: center;
+}
+.r-date-group {
+  display: flex; align-items: baseline;
+  gap: 3px; margin-left: auto;
+}
+.r-date-val {
+  border-bottom: 1px solid #555;
+  min-width: 38px; padding: 0 3px;
+  display: inline-block; text-align: center;
+}
 
-/* Footer */
-.r-ftr {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 5px 14px 8px;
-  gap: 8px;
+/* Items table */
+.r-table { width: 100%; border-collapse: collapse; }
+.r-table td, .r-table th {
+  border: 1px solid #777;
+  padding: 4px 7px;
+  vertical-align: middle;
 }
-.r-ftr-total { font-size: 0.86rem; font-weight: 600; white-space: nowrap; }
-.r-total-val {
-  font-size: 1.1rem;
-  font-weight: 900;
-  color: #c0392b;
-  font-family: 'Courier New', monospace;
-  min-width: 72px;
-  display: inline-block;
-  border-bottom: 1px solid #333;
-  text-align: right;
-  padding-bottom: 1px;
+.r-table th {
+  text-align: center; font-weight: 700;
+  background: #f5f5f5; font-size: 12px;
 }
-.r-ftr-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-left: 1px solid #aaa;
-  padding-left: 12px;
+.item-cell {
+  display: flex; align-items: center; gap: 6px;
+  white-space: nowrap; font-size: 11.5px;
 }
-.r-ftr-pt {
-  text-align: center;
-  font-size: 0.74rem;
-}
-.r-ftr-pt-en   { font-size: 0.62rem; color: #666; font-family: 'Inter', sans-serif; }
-.r-ftr-pt-name { font-weight: 700; color: #1a4f72; margin-top: 3px; font-size: 0.8rem; }
-.r-stamp-box {
-  width: 62px;
-  height: 62px;
-  border: 1.5px dashed #bbb;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.item-en { color: #666; font-size: 9.5px; }
+.cb-box {
+  width: 13px; height: 13px;
+  border: 1px solid #444;
+  display: inline-flex;
+  align-items: center; justify-content: center;
   flex-shrink: 0;
-}
-.r-stamp-label {
-  font-size: 0.7rem;
-  color: #ccc;
-  letter-spacing: 0.05em;
+  font-size: 10px; font-weight: bold;
+  color: #111;
 }
 
-/* Print */
+/* Stamp column in thead */
+.stamp-th {
+  font-size: 9.5px; font-weight: normal;
+  color: #444; text-align: center;
+  padding: 3px 4px !important;
+  background: #f5f5f5;
+}
+
+/* Clinic stamp cell (rowspan 7) */
+.stamp-col-clinic {
+  width: 22%;
+  vertical-align: middle;
+  padding: 4px !important;
+}
+
+/* Therapist label row */
+.therapist-label-left {
+  padding: 2px 7px !important;
+}
+.therapist-label-cell {
+  font-size: 9.5px; color: #444;
+  text-align: center; line-height: 1.5;
+  padding: 2px 3px !important;
+}
+
+/* Amount row */
+.r-amount-cell {
+  padding: 5px 8px !important;
+  font-size: 12px;
+}
+.r-amount-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.r-amount-cn {
+  display: flex; align-items: baseline; gap: 2px;
+  font-size: 12px;
+}
+.r-amount-ntd { font-size: 11.5px; }
+#r-total {
+  font-family: 'Courier New', monospace;
+  color: #CC0000;
+}
+
+/* Therapist stamp cell (amount row right col) */
+.stamp-col-therapist {
+  vertical-align: middle;
+  padding: 4px !important;
+}
+
+/* ===== Print ===== */
 @media print {
   .no-print, nav, footer, .site-footer,
   .navbar, .breadcrumb, #flash-messages { display: none !important; }
   body, html { padding: 0 !important; margin: 0 !important; background: #fff !important; }
   .container-fluid, .main-content, .row, .g-4,
   .col-xl-8, .col-lg-7 { all: unset; display: block; }
-  .receipt-paper {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .receipt {
     box-shadow: none !important;
-    border: 1px solid #888 !important;
     width: 200mm !important;
-    height: 138mm !important;
     max-width: 200mm !important;
+    padding: 4mm 5mm !important;
     margin: 0 auto !important;
     font-size: 0.73rem !important;
   }
@@ -369,43 +305,53 @@
 <script>
 const APPT_COST = {{ appt.cost | int }};
 
-// All treatment items from the physical receipt form
-// Left column: indices 0–6, Right column: indices 7–13
-const TREAT_ITEMS = [
-  // Left column
-  { zh: '治療項目',    en: 'Physical Therapy Evaluation', checked: false },
-  { zh: '肌力訓練',    en: 'Strengthening Training',      checked: false },
-  { zh: '耐力訓練',    en: 'Endurance Training',          checked: false },
-  { zh: '按摩',        en: 'Massage',                     checked: false },
-  { zh: '平衡訓練',    en: 'Balance Training',            checked: false },
-  { zh: '步態訓練',    en: 'Ambulation Training',         checked: false },
-  // Right column
-  { zh: '促進技術',    en: 'Facilitation Techniques',     checked: false },
-  { zh: '伸展訓練',    en: 'Stretching Exercise',         checked: false },
-  { zh: '被動訓練',    en: 'Passive Training',            checked: false },
-  { zh: '心肺功能訓練', en: 'Cardiopulmonary Training',   checked: false },
-  { zh: '治療性運動',  en: 'Therapeutic Exercise',        checked: false },
-  { zh: '被動關節角度', en: 'Passive R.O.M.',             checked: false },
-  { zh: '聚焦衝擊波',  en: 'Focused ESWT',               checked: false },
+const LEFT_ITEMS = [
+  ['物理治療評估', 'Physical Therapy Evaluation'],
+  ['肌力訓練',     'Strengthening Treatment'],
+  ['耐力訓練',     'Endurance Training'],
+  ['按摩',         'Massage'],
+  ['關節鬆動術',   'Mobilization'],
+  ['平衡訓練',     'Balance Training'],
+  ['行走訓練',     'Ambulation Training'],
 ];
 
-let totalAmt = APPT_COST;
+const RIGHT_ITEMS = [
+  ['促進技術',     'Facilitation Techniques'],
+  ['牽拉運動',     'Stretching Exercise'],
+  ['姿態訓練',     'Posture Training'],
+  ['心肺功能訓練', 'Cardiopulmonary Training'],
+  ['被動關節角度', 'Passive R.O.M'],
+  ['運動治療',     'Therapeutic Exercise'],
+  ['體外震波治療', 'Focused ESWT'],
+];
 
-// Render setup panel checkboxes (2 per row using Bootstrap grid)
+const AMOUNT_DATA = {
+  300:  '參佰',
+  1500: '壹仟伍佰',
+  2000: '貳仟',
+  2200: '貳仟貳佰',
+  2500: '貳仟伍佰',
+  2800: '貳仟捌佰',
+  3000: '參仟',
+  3500: '參仟伍佰',
+};
+
+let totalAmt = APPT_COST;
+let checked = new Array(14).fill(false);
+
 function renderSetup() {
   const el = document.getElementById('treat-items');
   el.innerHTML = '';
-  TREAT_ITEMS.forEach((item, idx) => {
+  [...LEFT_ITEMS, ...RIGHT_ITEMS].forEach((item, idx) => {
     const col = document.createElement('div');
     col.className = 'col-6';
     col.innerHTML = `
       <div class="treat-row">
         <input type="checkbox" class="treat-check" id="tc${idx}"
-               ${item.checked ? 'checked' : ''}
                onchange="toggleTreat(${idx}, this.checked)">
         <label for="tc${idx}" style="cursor:pointer;margin:0">
-          <span style="font-size:0.83rem">${item.zh}</span>
-          <span style="font-size:0.68rem;color:#888;display:block;line-height:1.1">${item.en}</span>
+          <span style="font-size:0.83rem">${item[0]}</span>
+          <span style="font-size:0.68rem;color:#888;display:block;line-height:1.1">${item[1]}</span>
         </label>
       </div>
     `;
@@ -414,34 +360,68 @@ function renderSetup() {
   renderReceipt();
 }
 
-function toggleTreat(idx, checked) {
-  TREAT_ITEMS[idx].checked = checked;
+function toggleTreat(idx, val) {
+  checked[idx] = val;
   renderReceipt();
 }
 
 function updateTotal(val) {
   totalAmt = parseInt(val) || 0;
   document.getElementById('r-total').textContent = totalAmt.toLocaleString();
+  updateAmountCN();
+}
+
+function updateAmountCN() {
+  const amtText = AMOUNT_DATA[totalAmt];
+  const el = document.getElementById('r-amount-cn');
+  if (amtText) {
+    el.textContent = '合計新台幣　' + amtText + '元整';
+  } else {
+    el.textContent = '合計新台幣';
+  }
 }
 
 function renderReceipt() {
-  const left  = TREAT_ITEMS.slice(0, 6);
-  const right = TREAT_ITEMS.slice(6);
+  const tbody = document.getElementById('r-tbody');
+  let rows = '';
 
-  function buildRows(items) {
-    return items.map(item => `
-      <div class="r-item-row">
-        <span class="r-item-mark ${item.checked ? 'r-item-mark-on' : 'r-item-mark-off'}">${item.checked ? '✓' : '□'}</span>
-        <span>
-          <span class="r-item-name-zh">${item.zh}</span>
-          <span class="r-item-name-en">${item.en}</span>
-        </span>
-      </div>
-    `).join('');
+  for (let i = 0; i < 7; i++) {
+    const lc = checked[i];
+    const rc = checked[i + 7];
+    const lt = LEFT_ITEMS[i];
+    const rt = RIGHT_ITEMS[i];
+
+    const stampCell = i === 0
+      ? `<td class="stamp-col-clinic" rowspan="7"></td>`
+      : '';
+
+    rows += `
+      <tr>
+        <td>
+          <div class="item-cell">
+            <span class="cb-box">${lc ? '✓' : ''}</span>
+            ${lt[0]}&nbsp;<span class="item-en">${lt[1]}</span>
+          </div>
+        </td>
+        <td>
+          <div class="item-cell">
+            <span class="cb-box">${rc ? '✓' : ''}</span>
+            ${rt[0]}&nbsp;<span class="item-en">${rt[1]}</span>
+          </div>
+        </td>
+        ${stampCell}
+      </tr>`;
   }
 
-  document.getElementById('r-col-l').innerHTML = buildRows(left);
-  document.getElementById('r-col-r').innerHTML = buildRows(right);
+  // Therapist stamp label row
+  rows += `
+    <tr>
+      <td colspan="2" class="therapist-label-left"></td>
+      <td class="therapist-label-cell">物理治療師<br>Physical Therapist</td>
+    </tr>`;
+
+  tbody.innerHTML = rows;
+  updateAmountCN();
 }
 
 renderSetup();
