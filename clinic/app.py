@@ -565,6 +565,63 @@ def receipt(appt_id):
                            roc_year=roc_year)
 
 
+@app.route('/receipts/issue')
+def issue_receipt():
+    return render_template('receipt_issue.html')
+
+
+@app.route('/api/patients/search')
+def api_patient_search():
+    q = request.args.get('q', '').strip()
+    if not q:
+        return jsonify([])
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT id, name, phone FROM patients WHERE name LIKE ? ORDER BY name LIMIT 20",
+        (f'%{q}%',)
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route('/api/appointments/by-patient')
+def api_appointments_by_patient():
+    patient_id = request.args.get('patient_id', '')
+    if not patient_id:
+        return jsonify([])
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT a.id, a.date, a.start_time, a.cost, a.status, a.service_type,
+               t.name AS therapist_name
+        FROM appointments a
+        JOIN therapists t ON a.therapist_id = t.id
+        WHERE a.patient_id = ?
+        ORDER BY a.date DESC, a.start_time DESC
+        LIMIT 50
+    """, (patient_id,)).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route('/api/appointments/by-date')
+def api_appointments_by_date():
+    d = request.args.get('date', '')
+    if not d:
+        return jsonify([])
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT a.id, a.date, a.start_time, a.cost, a.status, a.service_type,
+               p.name AS patient_name, t.name AS therapist_name
+        FROM appointments a
+        JOIN patients p ON a.patient_id = p.id
+        JOIN therapists t ON a.therapist_id = t.id
+        WHERE a.date = ?
+        ORDER BY a.start_time
+    """, (d,)).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
 @app.route('/appointments/<int:appt_id>/sign', methods=['GET', 'POST'])
 def sign_appointment(appt_id):
     conn = get_db()

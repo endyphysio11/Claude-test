@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-lg-7 col-xl-6">
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h5 class="mb-0 fw-semibold"><i class="bi bi-receipt me-2"></i>補開收據</h5>
+      <a href="/calendar" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>返回
+      </a>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-header gold-header">
+        <p class="text-uppercase mb-0" style="font-size:0.65rem;letter-spacing:0.12em;color:var(--gold)">ISSUE RECEIPT</p>
+        <h6 class="mb-0 fw-semibold">選擇要開立收據的預約</h6>
+      </div>
+      <div class="card-body">
+
+        <!-- Search mode tabs -->
+        <div class="d-flex gap-2 mb-4">
+          <button class="btn btn-sm mode-btn active" id="btn-name" onclick="setMode('name')">
+            <i class="bi bi-person-search me-1"></i>依姓名搜尋
+          </button>
+          <button class="btn btn-sm mode-btn" id="btn-date" onclick="setMode('date')">
+            <i class="bi bi-calendar3 me-1"></i>依日期搜尋
+          </button>
+        </div>
+
+        <!-- Name search -->
+        <div id="mode-name">
+          <div class="mb-3 position-relative">
+            <label class="form-label fw-semibold">個案姓名</label>
+            <input type="text" id="name-input" class="form-control"
+                   placeholder="輸入姓名搜尋..." autocomplete="off"
+                   oninput="onNameInput()">
+            <div id="name-dropdown" class="name-dropdown shadow-sm" style="display:none"></div>
+          </div>
+          <div id="selected-patient" style="display:none">
+            <div class="p-2 rounded mb-3 d-flex align-items-center justify-content-between"
+                 style="background:var(--gold-light);border:1px solid var(--gold-mid)">
+              <div>
+                <i class="bi bi-person-check me-1" style="color:var(--brand-dark)"></i>
+                <strong id="selected-name"></strong>
+                <span class="text-muted small ms-2" id="selected-phone"></span>
+              </div>
+              <button class="btn btn-sm btn-link text-muted p-0" onclick="clearPatient()">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <div id="appt-list-name"></div>
+          </div>
+        </div>
+
+        <!-- Date search -->
+        <div id="mode-date" style="display:none">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">選擇日期</label>
+            <input type="date" id="date-input" class="form-control"
+                   onchange="loadByDate()">
+          </div>
+          <div id="appt-list-date"></div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+.mode-btn {
+  border: 1.5px solid var(--gold-mid);
+  color: var(--brand-dark);
+  background: white;
+  border-radius: 50px;
+  padding: 6px 16px;
+  font-size: 0.82rem;
+  transition: all 0.15s;
+}
+.mode-btn.active {
+  background: var(--brand-dark);
+  color: white;
+  border-color: var(--brand-dark);
+}
+.mode-btn:hover:not(.active) {
+  background: var(--gold-light);
+}
+
+.name-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0; right: 0;
+  background: white;
+  border: 1px solid var(--gold-mid);
+  border-radius: 10px;
+  z-index: 100;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.name-item {
+  padding: 9px 14px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.name-item:last-child { border-bottom: none; }
+.name-item:hover { background: var(--gold-light); }
+
+.appt-card {
+  border: 1.5px solid var(--border, #e0e0e0);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-decoration: none;
+  display: block;
+  color: inherit;
+}
+.appt-card:hover {
+  border-color: var(--brand-dark);
+  background: var(--gold-light);
+  color: inherit;
+  text-decoration: none;
+}
+.appt-card .service-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--brand-dark);
+}
+.appt-card .appt-meta {
+  font-size: 0.78rem;
+  color: #666;
+  margin-top: 3px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.status-badge {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+.status-completed  { background: #d1fae5; color: #065f46; }
+.status-scheduled  { background: #dbeafe; color: #1e40af; }
+.status-cancelled  { background: #fee2e2; color: #991b1b; }
+
+.empty-hint {
+  text-align: center;
+  color: #999;
+  padding: 24px 0;
+  font-size: 0.85rem;
+}
+</style>
+
+<script>
+const SERVICE_LABEL = {
+  assessment:    '單純評估衛教',
+  full_treatment:'完整治療',
+  exercise:      '運動訓練',
+  winback:       '高階儀器 — Winback',
+  shockwave:     '高階儀器 — 震波',
+  space_rental:  '場租',
+};
+
+const STATUS_LABEL = {
+  completed: '已完成',
+  scheduled: '已預約',
+  cancelled: '已取消',
+};
+
+let nameTimer = null;
+let currentMode = 'name';
+
+// ── Mode toggle ────────────────────────────────────
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('mode-name').style.display = mode === 'name' ? '' : 'none';
+  document.getElementById('mode-date').style.display = mode === 'date' ? '' : 'none';
+  document.getElementById('btn-name').classList.toggle('active', mode === 'name');
+  document.getElementById('btn-date').classList.toggle('active', mode === 'date');
+  if (mode === 'date' && !document.getElementById('date-input').value) {
+    const today = new Date().toISOString().slice(0, 10);
+    document.getElementById('date-input').value = today;
+    loadByDate();
+  }
+}
+
+// ── Name search ────────────────────────────────────
+function onNameInput() {
+  clearTimeout(nameTimer);
+  const q = document.getElementById('name-input').value.trim();
+  if (q.length === 0) {
+    document.getElementById('name-dropdown').style.display = 'none';
+    return;
+  }
+  nameTimer = setTimeout(() => searchPatients(q), 250);
+}
+
+async function searchPatients(q) {
+  const res = await fetch(`/api/patients/search?q=${encodeURIComponent(q)}`);
+  const patients = await res.json();
+  const dd = document.getElementById('name-dropdown');
+  if (patients.length === 0) {
+    dd.innerHTML = '<div class="name-item text-muted">找不到符合的個案</div>';
+    dd.style.display = 'block';
+    return;
+  }
+  dd.innerHTML = patients.map(p => `
+    <div class="name-item" onclick="selectPatient(${p.id}, '${escHtml(p.name)}', '${escHtml(p.phone || '')}')">
+      <span>${escHtml(p.name)}</span>
+      <span class="text-muted small">${escHtml(p.phone || '')}</span>
+    </div>
+  `).join('');
+  dd.style.display = 'block';
+}
+
+async function selectPatient(id, name, phone) {
+  document.getElementById('name-dropdown').style.display = 'none';
+  document.getElementById('name-input').value = name;
+  document.getElementById('selected-name').textContent = name;
+  document.getElementById('selected-phone').textContent = phone;
+  document.getElementById('selected-patient').style.display = 'block';
+
+  const res = await fetch(`/api/appointments/by-patient?patient_id=${id}`);
+  const appts = await res.json();
+  renderApptList(document.getElementById('appt-list-name'), appts, false);
+}
+
+function clearPatient() {
+  document.getElementById('name-input').value = '';
+  document.getElementById('selected-patient').style.display = 'none';
+  document.getElementById('appt-list-name').innerHTML = '';
+}
+
+// ── Date search ────────────────────────────────────
+async function loadByDate() {
+  const d = document.getElementById('date-input').value;
+  if (!d) return;
+  const res = await fetch(`/api/appointments/by-date?date=${d}`);
+  const appts = await res.json();
+  renderApptList(document.getElementById('appt-list-date'), appts, true);
+}
+
+// ── Render helpers ─────────────────────────────────
+function renderApptList(container, appts, showPatient) {
+  if (appts.length === 0) {
+    container.innerHTML = '<div class="empty-hint"><i class="bi bi-inbox me-1"></i>此條件無預約紀錄</div>';
+    return;
+  }
+  container.innerHTML = appts.map(a => {
+    const svcLabel = SERVICE_LABEL[a.service_type] || a.service_type || '—';
+    const statusCls = 'status-' + (a.status || 'scheduled');
+    const statusTxt = STATUS_LABEL[a.status] || a.status;
+    const patientPart = showPatient
+      ? `<span><i class="bi bi-person me-1"></i>${escHtml(a.patient_name)}</span>`
+      : '';
+    return `
+      <a class="appt-card" href="/appointments/${a.id}/receipt" target="_blank">
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="service-name">${escHtml(svcLabel)}</div>
+          <span class="status-badge ${statusCls}">${statusTxt}</span>
+        </div>
+        <div class="appt-meta">
+          <span><i class="bi bi-calendar3 me-1"></i>${a.date}</span>
+          <span><i class="bi bi-clock me-1"></i>${a.start_time || '—'}</span>
+          ${patientPart}
+          <span><i class="bi bi-person-badge me-1"></i>${escHtml(a.therapist_name)}</span>
+          <span><i class="bi bi-cash me-1"></i>NT$ ${parseInt(a.cost).toLocaleString()}</span>
+        </div>
+      </a>`;
+  }).join('');
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('#name-input') && !e.target.closest('#name-dropdown')) {
+    document.getElementById('name-dropdown').style.display = 'none';
+  }
+});
+</script>
+
+{% endblock %}
