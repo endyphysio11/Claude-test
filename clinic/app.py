@@ -1036,7 +1036,8 @@ def report():
     conn = get_db()
     therapists = conn.execute("SELECT * FROM therapists ORDER BY id").fetchall()
     rows = conn.execute("""
-        SELECT a.*, p.name AS patient_name, t.name AS therapist_name
+        SELECT a.*, p.name AS patient_name, t.name AS therapist_name,
+               p.is_designated AS patient_designated
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
         JOIN therapists t ON a.therapist_id = t.id
@@ -1060,21 +1061,13 @@ def report():
 
     referral_label_map   = dict(REFERRAL_SOURCES)
     referral_breakdown   = defaultdict(int)
-    assigned_breakdown   = defaultdict(int)
     for p in new_patient_rows:
-        if p['is_designated'] == 0:
-            if p['referral_source']:
-                referral_breakdown[p['referral_source']] += 1
-            name = p['assigned_therapist_name'] or '未分派'
-            assigned_breakdown[name] += 1
+        if p['is_designated'] == 0 and p['referral_source']:
+            referral_breakdown[p['referral_source']] += 1
 
     referral_breakdown_labeled = [
         (referral_label_map.get(k, k), v)
         for k, v in sorted(referral_breakdown.items(), key=lambda x: -x[1])
-    ]
-    assigned_breakdown_labeled = [
-        (k, v)
-        for k, v in sorted(assigned_breakdown.items(), key=lambda x: -x[1])
     ]
 
     active  = [a for a in rows if a['status'] != 'cancelled']
@@ -1083,12 +1076,15 @@ def report():
     t_stats = {}
     for t in therapists:
         ta = [a for a in rows if a['therapist_id'] == t['id']]
+        active_ta = [a for a in ta if a['status'] != 'cancelled']
         t_stats[t['id']] = {
-            'name':         t['name'],
-            'count':        len([a for a in ta if a['status'] != 'cancelled']),
-            'completed':    len([a for a in ta if a['status'] == 'completed']),
-            'revenue':      sum(a['cost'] for a in ta if a['status'] == 'completed'),
-            'appointments': ta,
+            'name':          t['name'],
+            'count':         len(active_ta),
+            'completed':     len([a for a in ta if a['status'] == 'completed']),
+            'revenue':       sum(a['cost'] for a in ta if a['status'] == 'completed'),
+            'designated':    len([a for a in active_ta if a['patient_designated'] != 0]),
+            'not_designated': len([a for a in active_ta if a['patient_designated'] == 0]),
+            'appointments':  ta,
         }
 
     # Daily breakdown (week / month views)
@@ -1148,7 +1144,6 @@ def report():
         new_designated=new_designated,
         new_not_designated=new_not_designated,
         referral_breakdown=referral_breakdown_labeled,
-        assigned_breakdown=assigned_breakdown_labeled,
         new_patient_rows=new_patient_rows,
     )
 
